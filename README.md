@@ -1,1 +1,1 @@
-# HRIS_FinalProject
+# HRIS 인적자원관리시스템
