@@ -1,0 +1,20 @@
+package kr.or.ddit.mybatis.mappers.evaluation;
+
+import java.util.List;
+
+import org.apache.ibatis.annotations.Mapper;
+
+import kr.or.ddit.evaluation.vo.EvaluationCandidateVO;
+import kr.or.ddit.evaluation.vo.EvaluationTypeVO;
+import kr.or.ddit.evaluation.vo.EvaluationVO;
+
+@Mapper
+public interface EvaluationMapper {
+	// 피평가자 리스트 조회
+	List<EvaluationCandidateVO> selectEvaluationTargets(String evaluatorId);
+
+	
+    List<EvaluationTypeVO> selectEvaluationByRank();
+
+	public void insertEvaluation(EvaluationVO vo);
+}

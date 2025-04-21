@@ -1,0 +1,76 @@
+<%@ page contentType="text/html; charset=UTF-8" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+
+<html>
+<head>
+    <title>내 평가 대상자</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 10px; border: 1px solid #ccc; text-align: center; }
+        th { background-color: #f4f4f4; }
+        .btn { padding: 6px 12px; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-eval { background-color: #007bff; color: white; }
+        .btn-disabled { background-color: #ccc; color: white; cursor: default; }
+    </style>
+</head>
+<body>
+
+<h2>내가 평가할 대상자 목록</h2>
+
+<table>
+    <thead>
+        <tr>
+            <th>사번</th>
+            <th>이름</th>
+            <th>부서</th>
+            <th>직급</th>
+            <th>연도</th>
+            <th>반기</th>
+            <th>상태</th>
+            <th>평가</th>
+        </tr>
+    </thead>
+    <tbody>
+        <c:forEach var="item" items="${candidateList}">
+            <tr>
+                <td>${item.empId}</td>
+                <td>${item.name}</td>
+                <td>${item.department}</td>
+                <td>${item.rankName}</td>
+                <td>${item.evaluationYear}</td>
+                <td>
+                    <c:choose>
+                        <c:when test="${item.halfYear eq '1'}">상반기</c:when>
+                        <c:when test="${item.halfYear eq '2'}">하반기</c:when>
+                        <c:otherwise>-</c:otherwise>
+                    </c:choose>
+                </td>
+                <td>
+                    <c:choose>
+                        <c:when test="${item.evaluationStatus eq 'Y'}">완료</c:when>
+                        <c:otherwise>미완료</c:otherwise>
+                    </c:choose>
+                </td>
+                <td>
+                    <c:choose>
+                        <c:when test="${item.evaluationStatus eq 'N'}">
+                            <form action="${pageContext.request.contextPath}/evaluation/evaluationForm" method="get">
+                                <input type="hidden" name="empId" value="${item.empId}" />
+                                <input type="hidden" name="year" value="${item.evaluationYear}" />
+                                <input type="hidden" name="halfYear" value="${item.halfYear}" />
+                                <button type="submit" class="btn btn-eval">평가하기</button>
+                            </form>
+                        </c:when>
+                        <c:otherwise>
+                            <button class="btn btn-disabled" disabled>완료됨</button>
+                        </c:otherwise>
+                    </c:choose>
+                </td>
+            </tr>
+        </c:forEach>
+    </tbody>
+</table>
+
+</body>
+</html>

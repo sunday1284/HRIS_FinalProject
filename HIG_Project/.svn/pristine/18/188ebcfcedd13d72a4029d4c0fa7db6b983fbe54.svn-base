@@ -1,0 +1,12 @@
+package kr.or.ddit.rank.vo;
+
+import java.io.Serializable;
+
+import lombok.Data;
+
+@Data
+public class RankVO implements Serializable{
+	private String rankId;
+	private String rankName;
+	private String rankStatus;
+}

@@ -1,0 +1,209 @@
+package kr.or.ddit.salary.controller;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.mail.MessagingException;
+
+import org.apache.commons.math3.random.EmpiricalDistribution;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import kr.or.ddit.account.service.AccountService;
+import kr.or.ddit.account.vo.AccountVO;
+import kr.or.ddit.salary.service.SalaryService;
+import kr.or.ddit.salary.vo.SalaryVO;
+import kr.or.ddit.spring.config.EmailSalaryUtil;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+@Controller
+public class SalaryPaymentSendEmailController {
+
+    @Autowired
+    private AccountService serviceAccount;
+    
+    @Autowired
+    private SalaryService serviceSalary;
+
+    /**
+     * html2canvas로 캡처된 급여명세서 이미지를 수신자 이메일로 PDF 전송
+     */
+    @PostMapping("/salary/send") 
+    @ResponseBody 
+    public Map<String, Object> sendSalaryImage(@RequestBody Map<String, Object> payload) throws IOException {
+        String empId = (String) payload.get("empId");
+        String payYear = (String) payload.get("payYear");
+        String payMonth = (String) payload.get("payMonth");  
+        String base64Image = (String) payload.get("base64Image");
+
+        // 사번으로 이메일 정보 조회
+        AccountVO account = serviceAccount.selectedUnAccount(empId);
+        String toEmail = account != null && account.getEmployee() != null ? account.getEmployee().getEmail() : null;
+
+        if (toEmail == null || toEmail.isBlank()) {
+            log.error(" 수신자 이메일이 없습니다. 사번: {}", empId);
+            Map<String, Object> fail = new HashMap<>();
+            fail.put("message", "❌ 이메일 정보가 없습니다.");
+            return fail;
+        }
+
+        log.info("메일확인~~~~~~~~~~ {}", toEmail);
+
+        // 이미지 파일로 저장
+        String fileName = empId + "_" + payYear + "_" + payMonth + ".png";
+        String imagePath = "C:/salary_images/" + fileName;
+        saveBase64Image(base64Image, imagePath);
+
+        // PDF 변환 + 암호화
+        String pdfPath = imagePath.replace(".png", ".pdf");
+        String password = empId.substring(empId.length() - 4); // 사번 뒷자리 4자리
+
+        try {
+            EmailSalaryUtil.generatePasswordPdf(imagePath, pdfPath, password);
+            
+            // PDF 생성 후 존재 여부 확인
+            File pdfFile = new File(pdfPath);
+            int retry = 5;
+            while (!pdfFile.exists() && retry-- > 0) {
+                Thread.sleep(200); // 약간의 대기 후 재확인
+            }
+
+            if (!pdfFile.exists()) {
+                log.error(" PDF 파일이 존재하지 않습니다: {}", pdfPath);
+                Map<String, Object> fail = new HashMap<>();
+                fail.put("message", " PDF 파일 생성 실패");
+                return fail;
+            }
+
+            // 이메일 전송
+            EmailSalaryUtil.sendPdfEmail(
+                toEmail, 
+                "급여명세서 [" + payYear + "년 " + payMonth + "월]",
+                "안녕하세요 주식회사 대덕우리전자입니다., 급여명세서를 확인해주세요. <비밀번호 사번 뒷4자리>",
+                pdfPath
+            );
+        } catch (MessagingException e) {
+            log.error(" 이메일 전송 실패", e);
+            Map<String, Object> fail = new HashMap<>();
+            fail.put("message", " 이메일 전송 실패: " + e.getMessage());
+            return fail;
+        } catch (Exception e) {
+            log.error(" PDF 생성 또는 전송 과정 중 오류", e);
+            Map<String, Object> fail = new HashMap<>();
+            fail.put("message", " 시스템 오류 발생");
+            return fail;
+        }
+
+        // 응답 반환
+        Map<String, Object> result = new HashMap<>();
+        result.put("message", "📨 이메일 전송 완료");
+        return result;
+    }
+    
+ // 확정된 사원 목록 조회
+    @GetMapping("/salary/send/confirm")
+    @ResponseBody
+    public Map<String, Object> salarySendConfirm(
+        @RequestParam("payYear") String payYear,
+        @RequestParam("payMonth") String payMonth) {
+
+        Map<String, Object> confirm = new HashMap<>();
+        List<SalaryVO> confirmList = serviceSalary.salarySendEmailConfirm(payYear, payMonth);
+        confirm.put("confirmList", confirmList); // 최대 10명 중 JS에서 2~3명만 추림
+        return confirm;
+    }
+
+    // 일괄 이메일 발송
+    @PostMapping(value = "/salary/send/all", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    public Map<String, Object> sendSalaryImageAll(
+    		@RequestBody Map<String, Object> payload
+    ) throws IOException {
+    	log.info("========{}",payload);
+//        String payYear = (String) payload.get("payYear");
+//        String payMonth = (String) payload.get("payMonth");
+//        List<Map<String, Object>> base64List = (List<Map<String, Object>>) payload.get("base64List");
+//
+//        List<String> successList = new ArrayList<>();
+//        List<String> failList = new ArrayList<>();
+//
+//        for (Map<String, Object> item : base64List) {
+//            String empId = (String) item.get("empId");
+//            String base64Image = (String) item.get("base64Image");
+//
+//            if (base64Image == null || base64Image.length() < 50) {
+//                failList.add(empId + " (이미지 없음 또는 너무 짧음)");
+//                continue;
+//            }
+//
+//            try {
+//                AccountVO account = serviceAccount.readAccount(empId);
+//                String toEmail = (account != null && account.getEmployee() != null) ? account.getEmployee().getEmail() : null;
+//
+//                if (toEmail == null || toEmail.isBlank()) {
+//                    failList.add(empId + " (이메일 없음)");
+//                    continue;
+//                }
+//
+//                // 이미지 저장
+//                String fileName = empId + "_" + payYear + "_" + payMonth + ".png";
+//                String imagePath = "C:/salary_images/" + fileName;
+//                saveBase64Image(base64Image, imagePath);
+//
+//                // PDF 변환 및 암호화
+//                String pdfPath = imagePath.replace(".png", ".pdf");
+//                String password = empId.substring(empId.length() - 4);
+//                EmailSalaryUtil.generatePasswordPdf(imagePath, pdfPath, password);
+//
+//                // 이메일 전송
+//                EmailSalaryUtil.sendPdfEmail(
+//                    toEmail,
+//                    "급여명세서 [" + payYear + "년 " + payMonth + "월]",
+//                    "안녕하세요, 급여명세서를 첨부드립니다. 비밀번호는 사번 뒷자리 4자리입니다.",
+//                    pdfPath
+//                );
+//
+//                successList.add(empId);
+
+//            } catch (Exception e) {
+//                failList.add(empId + " (예외 발생)");
+//            }
+//        }
+
+//        Map<String, Object> result = new HashMap<>();
+//        result.put("successCount", successList.size());
+//        result.put("failCount", failList.size());
+//        result.put("successList", successList);
+//        result.put("failList", failList);
+//        result.put("message", "📨 " + successList.size() + "명 발송 성공, ❌ " + failList.size() + "명 실패");
+
+//        return result;
+    return null;
+    }
+
+
+    /**
+     * Base64 이미지를 PNG 파일로 저장
+     */
+    private void saveBase64Image(String base64Image, String outputPath) throws IOException {
+        // "data:image/png;base64,..." 형식에서 데이터 부분만 분리
+        String base64Data = base64Image.split(",")[1];
+        byte[] imageBytes = Base64.getDecoder().decode(base64Data);
+        try (FileOutputStream fos = new FileOutputStream(outputPath)) {
+            fos.write(imageBytes);
+        }
+    }
+}

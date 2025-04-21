@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="kr.or.ddit.mybatis.mappers.evaluation.EvaluationCandidateMapper">
+
+    <resultMap type="EvaluationCandidateVO" id="evaluationCandidateResultMap" autoMapping="true">
+        <id property="empId" column="emp_id"/>
+        <association property="employee" javaType="EmployeeVO" autoMapping="true"/>
+        <association property="department" javaType="DepartmentVO" autoMapping="true"/>
+        <association property="team" javaType="TeamVO" autoMapping="true"/>
+        <association property="rank" javaType="RankVO" autoMapping="true"/>
+    </resultMap>
+
+    <select id="readCandidateList" resultMap="evaluationCandidateResultMap">
+        SELECT 
+	        e.emp_id,
+	        e.name,
+	        d.department_name,
+	        t.team_name,
+	        r.rank_name,
+	        ec.evaluation_year,
+	        ec.half_year,
+	        ec.is_target,
+	        ec.evaluation_status
+	    FROM employee e
+	    JOIN department d ON e.department_id = d.department_id
+	    JOIN team t ON e.team_id = t.team_id
+	    JOIN rank r ON e.rank_id = r.rank_id
+	    LEFT JOIN evaluation_candidate ec
+	        ON e.emp_id = ec.emp_id
+	       AND ec.evaluation_year = #{year}
+	       AND ec.half_year = #{half}
+	    ORDER BY e.emp_id
+    </select>
+
+    <!-- 안전한 단건 업데이트 -->
+    <update id="updateOneCandidate" parameterType="EvaluationCandidateVO">
+        UPDATE evaluation_candidate
+        SET 
+            evaluation_year = #{evaluationYear},
+            half_year = #{halfYear},
+            is_target = #{isTarget},
+            evaluation_status = #{evaluationStatus}
+        WHERE emp_id = #{empId}
+    </update>
+    
+    <insert id="insertCandidate" parameterType="EvaluationCandidateVO">
+	    INSERT INTO evaluation_candidate (
+	        emp_id,
+	        evaluation_year,
+	        half_year,
+	        is_target,
+	        evaluation_status
+	    ) VALUES (
+	        #{empId},
+	        #{evaluationYear},
+	        #{halfYear},
+	        #{isTarget},
+	        #{evaluationStatus}
+	    )
+	</insert>
+	
+	<select id="existsCandidate" parameterType="EvaluationCandidateVO" resultType="int">
+	    SELECT COUNT(*)
+	    FROM evaluation_candidate
+	    WHERE emp_id = #{empId}
+	      AND evaluation_year = #{evaluationYear}
+	      AND half_year = #{halfYear}
+	</select>
+	
+	<select id="readAllRanks">
+		SELECT
+		    rank_id
+		  , rank_name
+		  , rank_status
+		FROM
+		    rank
+	</select>
+	
+	
+	<!-- 등록용 LEFT JOIN -->
+	<select id="readCandidateListForInsert" resultMap="evaluationCandidateResultMap">
+	    SELECT 
+	        e.emp_id,
+	        e.name,
+	        d.department_name,
+	        t.team_name,
+	        r.rank_name,
+	        ec.evaluation_year,
+	        ec.half_year,
+	        ec.is_target,
+	        ec.evaluation_status
+	    FROM employee e
+	    JOIN department d ON e.department_id = d.department_id
+	    JOIN team t ON e.team_id = t.team_id
+	    JOIN rank r ON e.rank_id = r.rank_id
+	    LEFT JOIN evaluation_candidate ec
+	        ON e.emp_id = ec.emp_id
+	       AND ec.evaluation_year = #{year}
+	       AND ec.half_year = #{half}
+	    <where>
+	        <if test="rank != null and rank != ''">
+	            r.rank_id = #{rank}
+	        </if>
+	    </where>
+	    ORDER BY e.emp_id
+	</select>
+	
+	<!-- 과거조회용 INNER JOIN -->
+	<select id="readCandidateListForHistory" resultMap="evaluationCandidateResultMap">
+	    SELECT 
+	        e.emp_id,
+	        e.name,
+	        d.department_name,
+	        t.team_name,
+	        r.rank_name,
+	        ec.evaluation_year,
+	        ec.half_year,
+	        ec.is_target,
+	        ec.evaluation_status
+	    FROM evaluation_candidate ec
+	    JOIN employee e ON ec.emp_id = e.emp_id
+	    JOIN department d ON e.department_id = d.department_id
+	    JOIN team t ON e.team_id = t.team_id
+	    JOIN rank r ON e.rank_id = r.rank_id
+	    WHERE ec.evaluation_year = #{year}
+	      AND ec.half_year = #{half}
+	    <if test="rank != null and rank != ''">
+	        AND r.rank_id = #{rank}
+	    </if>
+	    ORDER BY e.emp_id
+	</select>
+
+</mapper>

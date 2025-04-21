@@ -1,0 +1,39 @@
+package kr.or.ddit.evaluation.vo;
+
+import java.io.Serializable;
+
+import kr.or.ddit.employee.vo.EmployeeVO;
+import lombok.Data;
+
+@Data
+public class EvaluationVO implements Serializable{
+
+	private String evaluationId;         // 평가 ID (자동 생성 가능)
+    private String empId;                // 피평가자 사번
+    private String evaluatorEmpId;       // 평가자 사번
+    private String evaluationDate;       // 평가 일자
+    private String evaluatypeId;         // 평가 항목 ID (EVALUATION_TYPE FK)
+    private int evaluationScore;         // 점수
+    private String evaluationComments;   // 항목별 의견
+    private String evaluationFinal;      // 종합 의견 (한 항목만 저장 예정)
+    private String evaluationYear;       // 연도
+    private String halfYear;             // 반기
+    private int evaluationTotalScore; // ✅ 총점
+
+	
+	
+//	private Long evaluationId;
+//	private String empId;
+//	private String evaluatypeId;
+//	private String evaluationDate;
+//	private Long evaluationScore;
+//	private String evaluationComments;
+//	private String status;
+//	private String evaluationFinal;
+//	private String evaluatorId;
+//	
+//	private EmployeeVO employee;
+//	private EvaluationTypeVO evaluType;
+	
+	
+}

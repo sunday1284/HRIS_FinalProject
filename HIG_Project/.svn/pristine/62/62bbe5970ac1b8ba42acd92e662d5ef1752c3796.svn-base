@@ -1,0 +1,116 @@
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
+
+<title>KPI 평가 리스트</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<style>
+/* 스타일은 리디자인 기준으로 통일 */
+body {
+    font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+    font-size: 14px;
+    background-color: #f9fafb;
+    padding: 30px;
+    color: #222;
+}
+.card { background: #fff; border-radius: 6px; padding: 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+.search-row {
+    display: flex; gap: 10px; align-items: center; margin-bottom: 20px;
+}
+.search-row label { font-weight: bold; }
+input, select {
+    padding: 6px 10px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+}
+button {
+    background-color: #4caf50; color: white;
+    padding: 6px 12px; border: none; border-radius: 4px;
+    cursor: pointer;
+}
+button:hover { background-color: #43a047; }
+
+table {
+    width: 100%; border-collapse: collapse;
+    font-size: 13px; margin-top: 20px;
+}
+th, td {
+    border: 1px solid #ddd; padding: 8px; text-align: center;
+}
+th { background-color: #f4f6f8; }
+tbody tr:hover { background-color: #f1faff; }
+button.disabled {
+    background-color: #ccc !important;
+    cursor: not-allowed;
+}
+</style>
+<div class="card">
+    <h2>KPI 평가 대상자 목록</h2>
+
+    <form method="get" action="/evaluation/KPIList">
+        <div class="search-row">
+            <label>년도</label>
+            <select name="year">
+                <c:forEach var="y" begin="2020" end="2026">
+                    <option value="${y}" <c:if test="${y == year}">selected</c:if>>${y}</option>
+                </c:forEach>
+            </select>
+
+            <label>구분</label>
+            <select name="half">
+                <option value="1" <c:if test="${half == '1'}">selected</c:if>>상반기</option>
+                <option value="2" <c:if test="${half == '2'}">selected</c:if>>하반기</option>
+            </select>
+
+            <button type="submit">조회</button>
+        </div>
+    </form>
+
+    <table>
+        <thead>
+            <tr>
+                <th>사번</th>
+                <th>이름</th>
+                <th>부서</th>
+                <th>팀</th>
+                <th>직급</th>
+                <th>상태</th>
+                <th>평가</th>
+            </tr>
+        </thead>
+        <tbody>
+            <c:forEach var="target" items="${kpiList}">
+                <tr>
+                    <td>${target.empId}</td>
+                    <td>${target.name}</td>
+                    <td>${target.departmentName}</td>
+                    <td>${target.teamName}</td>
+                    <td>${target.rankName}</td>
+                    <td>
+                        <c:choose>
+                            <c:when test="${target.evaluationStatus == 'Y'}">완료</c:when>
+                            <c:otherwise>미완료</c:otherwise>
+                        </c:choose>
+                    </td>
+                    <td>
+                        <c:choose>
+                            <c:when test="${target.evaluationStatus == 'Y'}">
+                                <button class="disabled" disabled>평가완료</button>
+                            </c:when>
+                            <c:otherwise>
+                                <form method="get" action="/evaluation/evaluationFormUI">
+                                    <input type="hidden" name="empId" value="${target.empId}">
+                                    <input type="hidden" name="year" value="${year}">
+                                    <input type="hidden" name="half" value="${half}">
+                                    <button type="submit">평가하기</button>
+                                </form>
+                            </c:otherwise>
+                        </c:choose>
+                    </td>
+                </tr>
+            </c:forEach>
+        </tbody>
+    </table>
+</div>

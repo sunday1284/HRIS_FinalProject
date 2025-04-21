@@ -1,0 +1,74 @@
+/** 
+ * <pre>
+ * << 개정이력(Modification Information) >>
+ *   
+ *   수정일      			수정자           수정내용
+ *  -----------   	-------------    ---------------------------
+ * 2025. 3. 20.     	정태우            최초 생성
+ *
+ * </pre>
+ */
+const now = new Date();
+const year = now.getFullYear();
+const month = String(now.getMonth() + 1).padStart(2, '0'); // 월은 0부터 시작하므로 +1 필요
+const day = String(now.getDate()).padStart(2, '0');
+let formattedDate = `${year}-${month}-${day}`;
+const workDate = formattedDate;
+
+
+document.addEventListener("DOMContentLoaded", () => {
+
+
+
+function leavework() {
+	$.ajax({
+		url: '/workstauts/updateWorkStatus',
+		type: 'POST',
+		data: {
+			statusId: 'STAT_03',
+			empId: empId,
+			workDate: workDate
+		},
+		success: function(response) {
+		},
+		error: function() {
+		}
+	});
+}
+function srartwork() {
+	$.ajax({
+		url: '/workstauts/updateWorkStatus',
+		type: 'POST',
+		data: {
+			statusId: 'STAT_01',
+			empId: empId,
+			workDate: workDate
+		},
+		success: function(response) {
+		},
+		error: function() {
+		}
+	});
+}
+
+	const sockJs = new SockJS("/noti");
+
+	sockJs.onopen = function() {
+		console.log("웹소켓 연결 성공!");
+	};
+
+	sockJs.onmessage = function(event) {
+		alert(event.data);
+		if (event.data == '퇴근 처리 완료') {
+			leavework();
+			window.location.href = "/account/login/home";
+		} else {
+			srartwork();
+			window.location.href = "/account/login/home";
+		}
+	};
+
+	sockJs.onclose = function() {
+		console.log("웹소켓 연결 종료");
+	};
+});

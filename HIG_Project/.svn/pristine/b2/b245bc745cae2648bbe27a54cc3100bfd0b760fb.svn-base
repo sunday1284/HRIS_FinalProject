@@ -1,0 +1,14 @@
+package kr.or.ddit.job.vo;
+
+import java.io.Serializable;
+
+import lombok.Data;
+
+@Data
+public class JobVO implements Serializable{
+	
+	private String jobId;
+	private String jobName;
+	private String jobStatus;
+
+}

@@ -1,0 +1,139 @@
+/** 
+ * <pre>
+ * << 개정이력(Modification Information) >>
+ *   
+ *   수정일      			수정자           수정내용
+ *  -----------   	-------------    ---------------------------
+ * 2025. 4. 1.     	정태우            최초 생성
+ *
+ * </pre>
+ */
+document.addEventListener('DOMContentLoaded', function() {
+	const today = new Date();
+	const year = today.getFullYear();
+	const month = String(today.getMonth() + 1).padStart(2, '0');
+	const defaultValue = `${year}-${month}`;
+	const [payYear, payMonth] = defaultValue.split("-").map(Number);
+
+	$.ajax({
+		url: "/salary/summary",
+		type: "GET",
+		data: { payYear, payMonth },
+		success: function(res) {
+			renderCharts(res.deptChartData);				//res.rankChartData
+		},
+		error: function() {
+			alert("요약 정보 조회 실패");
+		}
+	});
+
+	$.ajax({
+		url: "/recruit/board/list",
+		type: "GET",
+		data: {date:payYear},
+		dataType: "json",
+		success: function(res) {
+			recruitChart(res.recruitBoardList);
+		},
+		error: function() {
+			alert("요약 정보 조회 실패");
+		}
+	});
+});
+
+// 전역 차트 객체 선언
+let deptChartInstance = null;
+let rankChartInstance = null;
+
+// ✅ ChartDataLabels 플러그인 등록 (한 번만 실행)
+Chart.register(ChartDataLabels);
+
+function renderCharts(deptData) {
+    const deptLabels = deptData.map(item => item.name);
+    const deptSalaries = deptData.map(item => item.avgSalary);
+
+    if (deptChartInstance !== null) {
+        deptChartInstance.destroy();
+    }
+	const colors = ['#FF0000', '#FF7F00', '#FFFF00', '#00FF00'];  // 빨, 주, 노, 초
+	
+	deptChartInstance = new Chart(document.getElementById('deptSalaryChart'), {
+	    type: 'bar',
+	    data: {
+	        labels: deptLabels,
+	        datasets: [{
+	            label: '부서별 평균 급여 (만원)',
+	            data: deptSalaries,
+	            backgroundColor:colors.map(color => color.replace("FF", "AA")), // 테두리 색 (조금 더 투명하게)
+				borderWidth: 1 }]
+	    },
+	    options: {
+	        responsive: true,
+	        maintainAspectRatio: true,
+	        scales: {
+	            y: { beginAtZero: true }
+	        },
+	        plugins: {
+	            datalabels: {
+	                anchor: 'end',
+	                align: 'top',
+	                formatter: function(value) {
+	                    return value + "만원";
+	                },
+	                color: 'black',
+	                font: {
+	                    weight: 'bold'
+	                }
+	            }
+	        }
+	    }
+	});
+}
+
+//	rankChartInstance = new Chart(document.getElementById('rankChart'), {
+//		type: 'doughnut',
+//		data: {
+//			labels: rankLabels,
+//			datasets: [{
+//				label: '직급별 평균 급여',
+//				data: rankSalaries,
+//				backgroundColor: 'rgba(255, 99, 132, 0.7)'
+//			}]
+//		},
+//		options: {
+//			responsive: true,
+//			maintainAspectRatio: false,
+//			scales: { y: { beginAtZero: true } }
+//		}
+//	});
+
+function recruitChart(deptData) {
+	const recruitPosition = deptData.map(item => item.recruitPosition);
+	const recruitWorkplace = deptData.map(item => item.recruitWorkplace);
+	const applicantCount = deptData.map(item => item.applicantCount);
+
+	new Chart(document.getElementById('recruitChart'), {
+		type: 'bar',
+		data: {
+			labels: recruitPosition,
+			datasets: [{
+				label: '지원자 수',
+				data: applicantCount,
+				backgroundColor: 'rgba(255, 159, 64, 0.7)'
+			}]
+		},
+		options: {
+			responsive: true,
+			maintainAspectRatio: true, // ✅ 비율 유지
+			indexAxis: 'y',
+			scales: {
+				x: {
+					beginAtZero: true,
+					ticks: { stepSize: 5 },
+					min: 0, // 최소값
+					max: 20
+				}
+			}
+		}
+	});
+}

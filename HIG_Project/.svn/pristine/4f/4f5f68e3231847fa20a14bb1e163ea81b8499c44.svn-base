@@ -1,0 +1,35 @@
+package kr.or.ddit.annual.controller;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import kr.or.ddit.annual.service.AnnualHistoryService;
+import kr.or.ddit.annual.vo.AnnualHistoryVO;
+
+@Controller
+public class AnnaulHistoryContoroller {
+	@Autowired
+	AnnualHistoryService service;
+	
+//	@GetMapping("/annaulHistoryList")
+//	public String annualHistory(Model model){
+//		model.addAttribute("historyList",service.TotalHisrotyList());
+//		return "tiles:annual/annualHistoryList";
+//	}
+	
+//	/**
+//	 * 한명의 연차 내역 조회
+//	 * @param model
+//	 * @param empId
+//	 * @return
+//	 */
+//	@GetMapping("/MyAnnualHistory")
+//	public String MyAnnualHistory(Model model , @RequestParam("empId") String empId) {
+//		return "tiles:annual/annualHistoryDetail";
+//	}
+}

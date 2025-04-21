@@ -1,0 +1,85 @@
+function renderChart() {
+  fetch("/approval/approver/statusCount")
+    .then(res => {
+      if (!res.ok) throw new Error(res.status);
+      return res.json();
+    })
+    .then(stats => {
+      // 1) summary badge 업데이트
+      stats.forEach(({ APRSTATUS, CNT }) => {
+        const badge = document.querySelector(`.stat-card .badge[data-status="${APRSTATUS}"]`);
+        if (badge) badge.textContent = CNT;
+      });
+
+      // 2) 차트 데이터 준비
+      const labels   = stats.map(o => o.APRSTATUS);
+      const data     = stats.map(o => o.CNT);
+      const colorMap = { 대기:"#ffc107", 승인:"#198754", 반려:"#dc3545" };
+      const bgColors = labels.map(l => colorMap[l] || "#888");
+      const ctx      = document.getElementById("statusChart").getContext("2d");
+      const statusMap= { 대기:"waiting", 승인:"completed", 반려:"rejected" };
+
+      // 이전 차트 인스턴스가 있으면 제거
+      if (window.statusChartInstance) {
+        window.statusChartInstance.destroy();
+      }
+
+      // 3) 차트 그리기
+      window.statusChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: '문서 건수',
+            data: data,
+            backgroundColor: bgColors
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          animation: { duration: 0 },
+          scales: {
+            x: { beginAtZero: true, grid: { display: false }, ticks: { precision: 0 } },
+            y: { grid: { display: false } }
+          },
+          plugins: {
+            legend: { display: false },
+            title: { display: true, text: '내 문서 상태별 통계' },
+            tooltip: {
+              callbacks: {
+                label: ctx => `${ctx.label}: ${ctx.parsed.x}건`
+              }
+            }
+          },
+          // 데이터 레이블을 기본적으로 차트에 표시하도록 하기
+          onAnimationComplete: function() {
+            const chart = this;
+            const ctx = chart.ctx;
+            const dataset = chart.data.datasets[0];
+            ctx.font = 'bold 12px sans-serif';
+            ctx.fillStyle = '#fff';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            // 레이블을 데이터 바의 중앙에 표시
+            dataset.data.forEach((value, index) => {
+              const x = chart.getDatasetMeta(0).data[index].x;
+              const y = chart.getDatasetMeta(0).data[index].y;
+              ctx.fillText(value, x, y);
+            });
+          },
+          onClick: (evt, elems) => {
+            if (!elems.length) return;
+            const idx = elems[0].index;
+            const status = statusMap[labels[idx]] || 'all';
+            localStorage.setItem('draftStatusFilterValue', status);
+            window.location.href = '/approval/mydrafts';
+          }
+        }
+      });
+    })
+    .catch(err => console.error("차트/섬머리 로드 실패:", err));
+}
+
+// 페이지 로드되면 자동 실행
+document.addEventListener("DOMContentLoaded", renderChart);

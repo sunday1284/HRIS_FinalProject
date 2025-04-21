@@ -1,0 +1,43 @@
+package kr.or.ddit.deptcomment.controller;
+
+import org.springframework.web.bind.annotation.*;
+import org.springframework.http.ResponseEntity;
+import javax.inject.Inject;
+import kr.or.ddit.deptcomment.service.DeptCommentService;
+
+@RestController
+@RequestMapping("dept")
+public class DeptCommentDeleteController {
+
+    @Inject
+    private DeptCommentService service;
+
+    // 댓글 삭제 API (비동기)
+    @PostMapping("/delete")
+    public ResponseEntity<String> deleteComment(@RequestBody CommentDeleteRequest request) {
+        try {
+            Long result = service.deleteComment(request.getCommentId());
+
+            if (result > 0) {
+                return ResponseEntity.ok("삭제 완료"); // 성공 응답
+            } else {
+                return ResponseEntity.badRequest().body("삭제 실패"); // 실패 응답
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("서버 오류 발생");
+        }
+    }
+
+    // 요청 데이터를 받을 DTO 클래스
+    static class CommentDeleteRequest {
+        private Long commentId;
+
+        public Long getCommentId() {
+            return commentId;
+        }
+
+        public void setCommentId(Long commentId) {
+            this.commentId = commentId;
+        }
+    }
+}

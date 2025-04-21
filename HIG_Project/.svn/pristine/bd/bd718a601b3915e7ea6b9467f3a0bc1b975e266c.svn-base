@@ -1,0 +1,222 @@
+/** 
+ * <pre>
+ * << 개정이력(Modification Information) >>
+ *   
+ *   수정일      			수정자           수정내용
+ *  -----------   	-------------    ---------------------------
+ * 2025. 4. 1.     	youngjun            최초 생성
+ *
+ * </pre>
+ */
+let allStatus = false;
+
+function allSuccess(obj){
+	
+	const selectedDate = document.querySelector("#payDate").value;
+	const [selectYear, selectMonth] = selectedDate.split("-");
+	
+	const rows = document.querySelectorAll("#table1 tbody tr");
+	const salaryList = [];
+	console.log("confirmCount확정인원 확인", confirmCount);
+	
+	rows.forEach(row => {
+		const salaryBtn = row.querySelector("button[onclick*='salaryFinal']");
+		const status = salaryBtn?.innerText.trim();
+
+		const empId = row.querySelector("td[data-salaryid]")?.textContent.trim();
+		const salaryId = row.querySelector("td[data-salaryid]")?.getAttribute("data-salaryid");
+		
+		console.log("empId",empId);
+		console.log("salaryId",salaryId);
+		
+		if (!allStatus && status === "확정대기") {
+			if (empId && salaryId) {
+				salaryList.push({ empId, salaryId });
+			}
+		}
+
+		if (allStatus && status === "확정") {
+			if (empId && salaryId) {
+				salaryList.push({ empId, salaryId });
+			}
+		}
+	});
+
+	if (salaryList.length === 0) {
+		alert(allStatus ? "확정취소 대상이 없습니다." : "확정할 대상이 없습니다.");
+		return;
+	}
+
+	const param = {
+	   salaryList : salaryList,
+	   payYear:selectYear,
+	   payMonth:selectMonth
+	};
+
+
+   $.ajax({
+      url: `/salary/final/all?payYear=${selectYear}&payMonth=${selectMonth}`,  // 쿼리스트링으로 추가
+      type: "POST",
+      contentType: "application/json",
+      data: JSON.stringify(param),
+      success: function (res) {
+         console.log("일괄시 카운트",res.finalCount);
+         document.querySelector("#confirmCount").innerText = `${res.finalCount}명`;
+         
+         alert(allStatus ? "일괄 확정취소 완료" : "일괄 확정 완료");
+         allStatus = !allStatus;
+         obj.innerText = allStatus ? "일괄취소" : "일괄확정";
+
+         salaryList.forEach(item => {
+            const row = [...rows].find(r => r.querySelector("td[data-salaryid]")?.getAttribute("data-salaryid") === item.salaryId);
+            const btn = row?.querySelector("button[onclick*='salaryFinal']");
+            const dateDiv = row?.querySelector(".confirm-date");
+
+            if (btn) {
+               btn.innerText = allStatus ? "확정": "확정대기";
+               btn.classList.toggle("btn-danger", allStatus);
+               btn.classList.toggle("btn-primary", !allStatus);
+            }
+
+            if (dateDiv) {
+               dateDiv.innerText = allStatus ? new Date().toISOString().split("T")[0] : "";
+            }
+         });
+      
+      },
+      error: function () {
+         alert("일괄 처리 실패");
+      }
+   });
+}
+
+let targetFinalButton = null;
+let targetFinalInfo = {};
+
+//  단건 확정 버튼 클릭 시 - 모달 준비
+function salaryFinal(button) {
+  const tr = button.closest("tr");
+
+  const empId = tr.querySelector("td[data-salaryid]")?.textContent.trim();
+  const salaryId = tr.querySelector("td[data-salaryid]")?.getAttribute("data-salaryid");
+  const netSalary = parseInt(tr.querySelector("td:nth-child(11)")?.innerText.replace(/,/g, "") || 0);
+  const payStatus = button.innerText.trim();
+
+  const requestBtn = tr.querySelector("button[onclick*='salaryRequest']");
+  const requestStatus = requestBtn?.innerText.trim();
+
+  if (payStatus === "확정" && requestStatus === "요청완료") {
+    alert("확정취소 불가: 요청완료된 항목입니다.");
+    return;
+  }
+
+  // 대상 저장
+  targetFinalButton = button;
+  targetFinalInfo = { empId, salaryId, payStatus };
+
+  // 모달 내용 설정
+  document.getElementById("modalEmpCount").innerText = 1;
+  document.getElementById("modalTotalAmount").innerText = netSalary.toLocaleString();
+
+  const modal = new bootstrap.Modal(document.getElementById("confirmModal"));
+  modal.show();
+
+  const finalBtn = document.getElementById("confirmFinal");
+  finalBtn.innerText = payStatus === "확정" ? "확정취소" : "확정진행";
+  finalBtn.onclick = doFinalSingle;
+
+}
+
+//salaryFinal
+//  단건 확정 실제 실행
+function doFinalSingle() {
+	
+  const btn = targetFinalButton;
+  const { empId, salaryId, payStatus } = targetFinalInfo;
+  const afterStatus = payStatus === "확정" ? "확정대기" : "확정";
+
+  $.ajax({
+    url: "/salary/final",
+    type: "POST",
+    data: { empId, salaryId },
+    success: function (res) {
+      if (res.cnt === "1") {
+        // 버튼 상태 반영
+        btn.innerText = afterStatus;
+        btn.classList.toggle("btn-danger", afterStatus === "확정");
+        btn.classList.toggle("btn-outline-primary", afterStatus === "확정대기");
+
+		console.log("단건확정btn : ", btn);
+		console.log("단건확정btn.closest.td", btn.closest("td"));
+		console.log("단건확정res : ", res);
+		
+	   // 확정일 처리
+	        const td = btn.closest("td");
+	        let dateDiv = td?.querySelector(".confirm-date");
+
+	        if (afterStatus === "확정") {
+	          if (!dateDiv) {
+	            dateDiv = document.createElement("small");
+	            dateDiv.className = "confirm-date text-muted mt-1";
+	            td.appendChild(dateDiv);
+	          }
+	          dateDiv.innerText = res.finalDate;
+	        } else {
+	          if (dateDiv) {
+	            dateDiv.remove(); // 확정 취소 시 삭제
+	          }
+	        }
+
+		
+		console.log("dateDiv : ", dateDiv);
+		console.log("res : ", res);
+		
+		if (dateDiv != null && undefined != res){
+			dateDiv.innerText = res.finalDate;	
+		}
+        
+
+        // 상단 카운트 업데이트
+        document.getElementById("confirmCount").innerText = `${res.finalCount}명`;
+		document.getElementById("salaryFinal").innerText = `${res.PayStatus}`;
+		
+        // 토스트 메시지
+        showToast("✅ 작업이 성공적으로 완료되었습니다.");
+
+        // 모달 닫기
+        const modalEl = document.getElementById("confirmModal");
+        const modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modalInstance.hide();
+      } else {
+        alert("처리 중 오류가 발생했습니다.");
+      }
+    },
+    error: function () {
+      alert("서버 통신 실패");
+    }
+  });
+}
+
+//  공통 토스트 메시지 함수
+function showToast(msg) {
+  const container = document.getElementById("toastArea");
+  container.innerHTML = `
+    <div class="toast align-items-center text-bg-success border-0 show" role="alert">
+      <div class="d-flex">
+        <div class="toast-body">${msg}</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>
+    </div>
+  `;
+  const toastEl = container.querySelector(".toast");
+  const bsToast = new bootstrap.Toast(toastEl);
+  bsToast.show();
+}
+
+
+
+
+
+
+
+

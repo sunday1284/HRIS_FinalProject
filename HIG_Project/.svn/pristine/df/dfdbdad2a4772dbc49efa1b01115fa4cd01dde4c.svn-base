@@ -1,0 +1,140 @@
+/** 
+ * <pre>
+ * << 개정이력(Modification Information) >>
+ *   
+ *   수정일      		수정자           수정내용
+ *  -----------   	-------------    ---------------------------
+ *  2025. 4. 3.     	youngjun            최초 생성
+ *  2025. 4. 8.     	youngjun            일괄 발송 3명 단위 최적화
+ * </pre>
+ */
+
+// 단건 발송
+document.addEventListener('click', function(e) {
+	if (e.target && e.target.id === "sendPaystubBtn") {
+		const iframe = document.getElementById("previewIframe");
+		const iframeDoc = iframe.contentWindow.document;
+
+		const empId = iframe.getAttribute("data-empid");
+		const payYear = iframe.getAttribute("data-payyear");
+		const payMonth = iframe.getAttribute("data-paymonth");
+
+		html2canvas(iframeDoc.body).then(canvas => {
+			const base64Image = canvas.toDataURL("image/png");
+
+			$.ajax({
+				url: '/salary/send',
+				type: 'POST',
+				contentType: 'application/json',
+				data: JSON.stringify({
+					empId: empId,
+					payYear: payYear,
+					payMonth: payMonth,
+					base64Image: base64Image
+				}),
+				success: function(res) {
+					alert(res.message || '명세서 메일발송 성공');
+				},
+				error: function() {
+					alert('명세서 발송에 실패했습니다.');
+				}
+			});
+		});
+	}
+});
+
+// salarySendPaymentMail.js
+
+document.querySelector("#sendAllPaystubsBtn").addEventListener("click", function(e) {
+	console.log("📨 일괄메일 시작");
+
+	const selectedDate = document.querySelector("#payDate").value;
+	if (!selectedDate) {
+		alert("📅 연도와 월을 선택해주세요.");
+		return;
+	}
+
+	const [payYear, payMonth] = selectedDate.split("-");
+	console.log("일괄메일 연월:", payYear, payMonth);
+
+	$.ajax({
+		url: "/salary/send/confirm",
+		type: "GET",
+		data: { payYear, payMonth },
+		success: function(res) {
+			const salaryList = res.confirmList;
+			console.log("📋 일괄리스트:", res);
+
+			// 최대 3명만 추출
+			const batchList = salaryList.slice(0, 3);
+			const iframes = ["previewIframe1", "previewIframe2", "previewIframe3"];
+			const payloadList = [];
+			let processed = 0;
+
+			// 캡처 완료 후 서버 전송 조건 확인
+			function checkAndSendAll() {
+				if (processed === batchList.length) {
+					sendAllImagesToServer(payYear, payMonth, payloadList);
+				}
+			}
+
+			// 직원별 캡처 및 처리
+			batchList.forEach((emp, index) => {
+				const iframe = document.getElementById(iframes[index]);
+				iframe.src = `/salary/detail/${emp.empId}/${payYear}/${payMonth}`;
+
+				iframe.onload = () => {
+					const interval = setInterval(() => {
+						try {
+							const doc = iframe.contentWindow.document;
+							const ready = doc.querySelector(".salary-detail-title") && iframe.contentWindow.renderReady;
+
+							if (ready) {
+								clearInterval(interval);
+
+								html2canvas(doc.body).then((canvas) => {
+									payloadList.push({
+										empId: emp.empId,
+										base64Image: canvas.toDataURL("image/png"),
+									});
+									processed++;
+									checkAndSendAll();
+								}).catch((err) => {
+									console.error(`❌ ${emp.empId} 캡처 실패`, err);
+									processed++;
+									checkAndSendAll();
+								});
+							}
+						} catch (e) {
+							console.error("⚠ iframe 접근 실패", e);
+						}
+					}, 300);
+				};
+			});
+		},
+		error: function() {
+			alert("❌ 확정 급여 리스트 조회 실패");
+		},
+	});
+});
+
+function sendAllImagesToServer(payYear, payMonth, payloadList) {
+	fetch("/salary/send/all", {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({
+			payYear: payYear,
+			payMonth: payMonth,
+			base64List: payloadList,
+		}),
+	})
+		.then((res) => res.json())
+		.then((result) => {
+			alert(result.message);
+			console.log("✅ 성공 목록:", result.successList);
+			console.log("❌ 실패 목록:", result.failList);
+		})
+		.catch(() => {
+			alert("📛 일괄 메일 발송 실패");
+		});
+}

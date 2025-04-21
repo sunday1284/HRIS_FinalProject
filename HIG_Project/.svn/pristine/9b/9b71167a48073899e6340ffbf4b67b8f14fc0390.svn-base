@@ -1,0 +1,55 @@
+/** 
+ * <pre>
+ * << 개정이력(Modification Information) >>
+ *   
+ *   수정일      			수정자           수정내용
+ *  -----------   	-------------    ---------------------------
+ * 2025. 4. 3.     	youngjun            최초 생성
+ *
+ * </pre>
+ */
+document.addEventListener('click', function(e){
+	
+	console.log("오긴하나");
+	
+	if (e.target && e.target.id === "sendPaystubBtn") {
+	    const iframe = document.getElementById("previewIframe");
+	    const iframeDoc = iframe.contentWindow.document;
+
+	    const empId = iframe.getAttribute("data-empid");
+	    const payYear = iframe.getAttribute("data-payyear");
+	    const payMonth = iframe.getAttribute("data-paymonth");
+
+		console.log("empId1",empId);
+		console.log("payYear1",payYear);
+		console.log("payMonth1",payMonth);
+
+		
+	    html2canvas(iframeDoc.body).then(canvas => {
+	        const base64Image = canvas.toDataURL("image/png");
+
+			console.log("empId",empId);
+			console.log("payYear",payYear);
+			console.log("payMonth",payMonth);
+			
+	        $.ajax({
+	            url: '/salary/send',
+	            type: 'POST',
+	            contentType: 'application/json',
+	            data: JSON.stringify({
+	                empId: empId,
+	                payYear: payYear,
+	                payMonth: payMonth,
+	                base64Image: base64Image
+	            }),
+	            success: function (res) {
+	                alert(res.message || '명세서 메일발송 성공');
+	            },
+	            error: function () {
+	                alert('명세서 발송에 실패했습니다.');
+	            }
+	        });
+	    });
+	}
+
+});

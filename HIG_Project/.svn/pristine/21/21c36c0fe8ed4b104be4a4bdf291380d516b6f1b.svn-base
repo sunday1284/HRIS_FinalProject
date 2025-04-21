@@ -1,0 +1,41 @@
+package kr.or.ddit.mybatis.mappers.evaluation;
+
+import java.util.List;
+
+import org.apache.ibatis.annotations.Mapper;
+
+import kr.or.ddit.evaluation.vo.EvaluationCandidateVO;
+import kr.or.ddit.evaluation.vo.EvaluationTypeVO;
+import kr.or.ddit.evaluation.vo.EvaluationVO;
+
+@Mapper
+public interface EvaluationMapper {
+
+	/**
+	 *  평가하기 -> 내가 평가할 대상 리스트 : 팀장 기준으로 소속 팀원 조회
+	 * @param evaluatorId
+	 * @return
+	 */
+	List<EvaluationCandidateVO> selectEvaluationTargets(String evaluatorId);
+	
+	/**
+	 * 평가 결과 저장용
+	 * @param vo
+	 */
+	public void insertEvaluation(EvaluationVO vo);
+	
+	/**
+	 * 평가하기 -> 리스트 -> 직급에 맞는 평가 form 호출
+	 * @param rankId
+	 * @return
+	 */
+	List<EvaluationTypeVO> selectEvaluationByRank(String rankId);
+	
+	/**
+	 * 피평가자의 직급 조회
+	 * @param empId
+	 * @return
+	 */
+	String selectRankIdByEmpId(String empId);
+
+}

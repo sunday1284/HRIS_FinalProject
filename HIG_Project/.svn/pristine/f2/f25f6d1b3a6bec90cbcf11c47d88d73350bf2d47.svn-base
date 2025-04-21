@@ -1,0 +1,69 @@
+/** 
+ * <pre>
+ * << 개정이력(Modification Information) >>
+ *   
+ *   수정일      			수정자           수정내용
+ *  -----------   	-------------    ---------------------------
+ * 2025. 3. 29.     	youngjun            최초 생성
+ *
+ * </pre>
+ */
+function finalStatus(obj){
+	let final_before = obj.innerHTML;
+	console.log(final_before);
+	
+	let final_after="";
+	const tr = obj.closest("tr");
+	console.log("tr값?",tr)
+	const empId = tr.querySelector("td[data-salaryid]").textContent.trim();
+	const salaryId = tr.querySelector("td[data-salaryid]").getAttribute("data-salaryid");
+	console.log("empId값?",empId)
+	console.log("salaryId값?",salaryId)
+	
+	const payYear = document.getElementById("payDate").value.split("-")[0]; // yyyy-mm
+	const payMonth = document.getElementById("payDate").value.split("-")[1];
+	const date = `${payYear}-${payMonth}-01`;
+	
+	if(final_before ==="요청대기") {
+		final_after="요청완료"
+		obj.classList.remove("btn-primary");
+		obj.classList.add("btn-danger");
+	}else{
+		final_after="요청대기";
+		obj.classList.remove("btn-danger");
+		obj.classList.add("btn-primary");
+	}
+	
+	const currentTd = obj.closest("td");
+	const nextTd = currentTd.nextElementSibling;
+	
+	$.ajax({
+		url:"/salary/status",
+		type:"POST",
+		data:{
+			empId:empId,
+			salaryId:salaryId,
+			payYear:payYear,
+			payMonth:payMonth,
+			date:date
+		},
+		success:function(res){
+			console.log("요청인원",res.requestCount);
+			console.log("요청일",res.requestDate);
+		}
+	})
+}
+
+
+function finalSummary(){
+	console.log("여기오나?? 파이널");
+	$.ajax({
+		url:"/salary/summary",
+		type:"GET",
+		//data : SYSDATE
+		success:function(res){
+			console.log("res값확인",res);
+		}
+	})
+}
+

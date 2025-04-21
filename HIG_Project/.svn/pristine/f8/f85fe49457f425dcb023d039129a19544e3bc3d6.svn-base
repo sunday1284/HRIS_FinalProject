@@ -1,0 +1,11 @@
+
+maxFileSize=102400
+maxRequestSize=102400
+
+#fileImages=Z:\\fileImages
+#fileUploads=Z:\\uploads
+
+fileImages=${basedir}\\src\\main\\webapp\\resources\\fileImages
+#fileImages=/resources/fileImages/
+#fileUploads=/WEB-INF/uploads/
+fileUploads=${basedir}\\src\\main\\webapp\\WEB-INF\\uploads\\

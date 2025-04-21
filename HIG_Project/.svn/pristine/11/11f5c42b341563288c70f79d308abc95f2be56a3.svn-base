@@ -1,0 +1,198 @@
+// 전역 변수 설정
+window.approverId = null;
+window.dataTableInstance = null;
+
+/** 로그인한 결재자 ID 조회 */
+function fetchApproverId() {
+  $.ajax({
+    url: ctx + '/approvalProcess/getApproverId',
+    type: "GET",
+    dataType: "text"
+  }).done(function(empId) {
+    window.approverId = empId;
+    fetchAndRenderDocuments();
+  }).fail(function() {
+    showErrorRow('결재자 정보를 가져올 수 없습니다.');
+  });
+}
+
+/** 상태 필터에 따라 올바른 API 호출 → 테이블 렌더링 */
+function fetchAndRenderDocuments() {
+  var status = $('#statusFilter').val();
+  if (!window.approverId) {
+    return showErrorRow('결재자 ID가 없습니다.');
+  }
+
+  if (status === 'all') {
+    $.when(
+      $.getJSON(ctx + '/approvalProcess/approverDrafts', { aprId: window.approverId }),
+      $.getJSON(ctx + '/approval/approver/processList', { approverId: window.approverId }),
+      $.getJSON(ctx + '/approval/approver/complitedList', { approverId: window.approverId })
+    ).done(function(dRes, pRes, cRes) {
+      var drafts    = dRes[0].map(normalizeDraft);
+      var process   = pRes[0];
+      var completed = cRes[0];
+      renderTable(drafts.concat(process, completed));
+    }).fail(function() {
+      showErrorRow('전체 문서 로드 중 오류가 발생했습니다.');
+    });
+  }
+  else if (status === 'draft') {
+    $.getJSON(ctx + '/approvalProcess/approverDrafts', { aprId: window.approverId })
+     .done(function(data) {
+       renderTable(data.map(normalizeDraft));
+     }).fail(function() {
+       showErrorRow('대기 문서 조회 실패');
+     });
+  }
+  else if (status === 'process') {
+    $.getJSON(ctx + '/approval/approver/processList', { approverId: window.approverId })
+     .done(renderTable)
+     .fail(function() { showErrorRow('진행중 문서 조회 실패'); });
+  }
+  else if (status === 'approved') {
+    $.getJSON(ctx + '/approval/approver/complitedList', { approverId: window.approverId })
+     .done(function(data) {
+       renderTable(data.filter(d => d.aprStatus === '승인'));
+     }).fail(function() { showErrorRow('승인 문서 조회 실패'); });
+  }
+  else if (status === 'rejected') {
+    $.getJSON(ctx + '/approval/approver/complitedList', { approverId: window.approverId })
+     .done(function(data) {
+       renderTable(data.filter(d => d.aprStatus === '반려'));
+     }).fail(function() { showErrorRow('반려 문서 조회 실패'); });
+  }
+}
+
+/** 대기(드래프트) 데이터 모양 통일 */
+function normalizeDraft(doc) {
+  return {
+    draftId: doc.draftId,
+    draftTitle: doc.draftTitle,
+    draftDate: doc.draftDate,
+    draftEmpName: doc.draftEmpName,
+    approverDepartmentName: doc.approverDepartmentName || doc.draftDepartmentName,
+    approverName: doc.approverName,
+    aprStatus: '대기'
+  };
+}
+
+/** 테이블 렌더링 – DataTable API를 사용하여 데이터 업데이트 */
+function renderTable(data) {
+  // data가 없으면 빈 배열 처리
+  var rows = [];
+  if (!data || data.length === 0) {
+    rows.push(['등록된 문서가 없습니다.', '', '', '', '', '', '', '']);
+  } else {
+    rows = data.map(function(doc) {
+      var statusLabel = doc.aprStatus;
+      if (statusLabel === '승인')
+        statusLabel = '최종승인 (' + (doc.approverName || '-') + ')';
+      else if (statusLabel === '보류')
+        statusLabel = '진행중';
+      
+      return [
+          doc.draftId || '-',
+          '<a href="' + ctx + '/approval/draft/detailView?draftId=' + doc.draftId + '">' +
+              (doc.draftTitle || '-') + '</a>',
+          formatDate(doc.draftDate),
+          doc.draftEmpName || '-',
+          doc.approverDepartmentName || '-',
+          doc.approverName || '-',
+          statusLabel,
+          doc.draftFile ? '<a href="' + ctx + '/file/' + doc.draftFile + '" download>다운로드</a>' : 'N'
+      ];
+    });
+  }
+  
+  if (window.dataTableInstance) {
+    // DataTable 인스턴스가 이미 있으면 데이터를 갱신합니다.
+    window.dataTableInstance.clear();
+    window.dataTableInstance.rows.add(rows).draw();
+  } else {
+    // 최초 초기화: DataTable 생성 시 data 옵션을 사용
+    window.dataTableInstance = $('#approverTable').DataTable({
+      data: rows,
+      columns: [
+         { title: "문서ID" },
+         { title: "제목" },
+         { title: "기안일" },
+         { title: "기안자" },
+         { title: "부서" },
+         { title: "결재자" },
+         { title: "상태" }
+      ],
+      dom: 'lrtip',
+      paging: true,
+      lengthChange: true,
+      pageLength: parseInt($('#rowsPerPage').val(), 10),
+      searching: true,
+      ordering: true,
+      info: true,
+      autoWidth: false,
+      language: {
+         search: "검색:",
+         lengthMenu: "표시 _MENU_ 건",
+         info: "총 _TOTAL_ 건 중 _START_ - _END_ 건 표시",
+         infoEmpty: "표시할 데이터 없음",
+         infoFiltered: "(전체 _MAX_ 건 중)",
+         zeroRecords: "일치하는 데이터가 없습니다.",
+         paginate: {
+            first: "처음",
+            last: "마지막",
+            next: "다음",
+            previous: "이전"
+         }
+      }
+    });
+  }
+}
+
+/** 에러 메시지 표시 */
+function showErrorRow(msg) {
+  if (window.dataTableInstance) {
+    window.dataTableInstance.clear().draw();
+    window.dataTableInstance.row.add([msg, '', '', '', '', '', '', '']).draw();
+  } else {
+    // DataTable이 없을 경우 간단히 tbody에 직접 추가
+    $('#approverTable tbody').html('<tr><td colspan="8" class="text-center text-danger">' + msg + '</td></tr>');
+  }
+}
+
+/** 날짜 포맷 (YYYY-MM-DD HH:mm) */
+function formatDate(s) {
+  if (!s) return '-';
+  var d = new Date(s);
+  if (isNaN(d)) return '-';
+  var z = n => ('0' + n).slice(-2);
+  return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) +
+       ' ' + z(d.getHours()) + ':' + z(d.getMinutes());
+}
+
+// 초기 로드 시 결재자 ID 조회
+$(document).ready(function () {
+  fetchApproverId();
+  
+  // 필터, 검색, 표시 건수 이벤트 바인딩
+  $('#statusFilter').on('change', fetchAndRenderDocuments);
+
+  $('#rowsPerPage').on('change', function(){
+    var len = parseInt($(this).val(), 10);
+    if(window.dataTableInstance){
+      window.dataTableInstance.page.len(len).draw();
+    }
+  });
+
+  $('#searchBtn').on('click', function(){
+    var q = $('#searchInput').val();
+    if(window.dataTableInstance){
+      window.dataTableInstance.search(q).draw();
+    }
+  });
+
+  $('#searchInput').on('keypress', function(e){
+    if(e.which === 13){
+      $('#searchBtn').click();
+    }
+  });
+});

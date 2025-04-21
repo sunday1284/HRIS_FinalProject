@@ -1,0 +1,166 @@
+/** 
+ * <pre>
+ * << 개정이력(Modification Information) >>
+ *   
+ *   수정일      			수정자           수정내용
+ *  -----------   	-------------    ---------------------------
+ * 2025. 4. 1.     	youngjun            최초 생성
+ *
+ * </pre>
+ */
+let allStatus = false;
+
+function allSuccess(obj){
+	
+	const selectedDate = document.querySelector("#payDate").value;
+	const [selectYear, selectMonth] = selectedDate.split("-");
+	
+	const rows = document.querySelectorAll("#table1 tbody tr");
+	const salaryList = [];
+	console.log("confirmCount확정인원 확인", confirmCount);
+	
+	rows.forEach(row => {
+		const salaryBtn = row.querySelector("button[onclick*='salaryFinal']");
+		const status = salaryBtn?.innerText.trim();
+
+		const empId = row.querySelector("td[data-salaryid]")?.textContent.trim();
+		const salaryId = row.querySelector("td[data-salaryid]")?.getAttribute("data-salaryid");
+		
+		console.log("empId",empId);
+		console.log("salaryId",salaryId);
+		
+		if (!allStatus && status === "확정대기") {
+			if (empId && salaryId) {
+				salaryList.push({ empId, salaryId });
+			}
+		}
+
+		if (allStatus && status === "확정") {
+			if (empId && salaryId) {
+				salaryList.push({ empId, salaryId });
+			}
+		}
+	});
+
+	if (salaryList.length === 0) {
+		alert(allStatus ? "확정취소 대상이 없습니다." : "확정할 대상이 없습니다.");
+		return;
+	}
+
+	const param = {
+	   salaryList : salaryList,
+	   payYear:selectYear,
+	   payMonth:selectMonth
+	};
+
+
+   $.ajax({
+      url: `/salary/final/all?payYear=${selectYear}&payMonth=${selectMonth}`,  // 쿼리스트링으로 추가
+      type: "POST",
+      contentType: "application/json",
+      data: JSON.stringify(param),
+      success: function (res) {
+         console.log("일괄시 카운트",res.finalCount);
+         document.querySelector("#confirmCount").innerText = `${res.finalCount}명`;
+         
+         alert(allStatus ? "일괄 확정취소 완료" : "일괄 확정 완료");
+         allStatus = !allStatus;
+         obj.innerText = allStatus ? "일괄취소" : "일괄확정";
+
+         salaryList.forEach(item => {
+            const row = [...rows].find(r => r.querySelector("td[data-salaryid]")?.getAttribute("data-salaryid") === item.salaryId);
+            const btn = row?.querySelector("button[onclick*='salaryFinal']");
+            const dateDiv = row?.querySelector(".confirm-date");
+
+            if (btn) {
+               btn.innerText = allStatus ? "확정" : "확정대기";
+               btn.classList.toggle("btn-danger", allStatus);
+               btn.classList.toggle("btn-primary", !allStatus);
+            }
+
+            if (dateDiv) {
+               dateDiv.innerText = allStatus ? new Date().toISOString().split("T")[0] : "";
+            }
+         });
+      
+      },
+      error: function () {
+         alert("일괄 처리 실패");
+      }
+   });
+}
+
+
+
+
+function salaryFinal(obj) {
+	let str_before = obj.innerText.trim();
+	let str_after = "";
+
+	const tr = obj.closest("tr");
+	const empId = tr.querySelector("td[data-salaryid]").textContent.trim();
+	const salaryId = tr.querySelector("td[data-salaryid]").getAttribute("data-salaryid");
+	
+//	const empIds = tr.querySelectorAll("td[data-salaryid]").textContent.trim();
+//	console.log("empIds",empIds);
+	
+//	const modal = new bootstrap.Modal(document.getElementById("confirmModal"));
+//	modal.show();
+	
+//	tempFinalTarget = obj;
+		
+		const fixRequest = tr.querySelector("button[onclick*='salaryRequest']"); //요청확인
+		const fixReqStatus = fixRequest.innerText.trim();
+		
+		if (str_before === "확정" && fixReqStatus === "요청완료") {
+			alert("확정취소불가. 요청완료건입니다.");
+			return;
+		}
+		
+		console.log("str_before",str_before);
+		console.log("str_after",str_after);
+	
+	if (str_before === "확정대기") {
+		str_after = "확정";
+		obj.classList.remove("btn-primary");
+		obj.classList.add("btn-danger");
+	} else {
+		str_after = "확정대기";
+		obj.classList.remove("btn-danger");
+		obj.classList.add("btn-primary");
+	}
+
+	const parentTd = obj.closest("td");
+	const confirmDateDiv = parentTd.querySelector(".confirm-date");
+	console.log("parentTd",parentTd);
+	console.log("confirmDateDiv",confirmDateDiv);
+
+	
+	$.ajax({
+		url: "/salary/final",
+		type: "POST",
+		data: {
+			empId: empId,
+			salaryId: salaryId
+		},
+		success: function (res) {
+			console.log("res")
+			if (res.cnt === "1") {
+				obj.innerHTML = str_after;
+				document.querySelector("#confirmCount").innerText = `${res.finalCount}명`;
+
+				if (res.finalDate !== null) {
+					confirmDateDiv.innerText = res.finalDate;
+				} else {
+					confirmDateDiv.innerText = "";
+				}
+			} else {
+				alert("확정/확정대기 처리 중 문제가 발생했습니다.");
+			}
+		},
+		error: function () {
+			alert("급여 확정 처리 실패");
+		}
+	});
+}
+

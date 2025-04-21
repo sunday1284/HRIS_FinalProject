@@ -1,0 +1,249 @@
+/** 
+ * <pre>
+ * << 개정이력(Modification Information) >>
+ *   
+ *   수정일               수정자           수정내용
+ *  -----------      -------------    ---------------------------
+ * 2025. 3. 23.        youngjun            최초 생성
+ *
+ * </pre>
+ */
+document.addEventListener('DOMContentLoaded', function() {
+   //  오늘 날짜로 기본값 설정
+   const today = new Date();
+   const year = today.getFullYear();
+   const month = String(today.getMonth() + 1).padStart(2, '0');
+   const defaultValue = `${year}-${month}`;
+   document.querySelector("#payDate").value = defaultValue;
+   
+  SalarySummary(); //  초기 차트 및 요약 데이터 호출
+});
+
+// 전역 차트 객체 선언
+let deptChartInstance = null;
+let rankChartInstance = null;
+
+function renderCharts(deptData, rankData) {
+   const deptLabels = deptData.map(item => item.name);
+   const deptSalaries = deptData.map(item => item.avgSalary);
+
+   const rankLabels = rankData.map(item => item.name);
+   const rankSalaries = rankData.map(item => item.avgSalary);
+   console.log("rankLabels",rankLabels);
+   console.log("rankSalaries",rankSalaries);
+   
+   // 총 급여 계산
+   const totalSalary = rankSalaries.reduce((sum, val) => sum + val, 0);
+   
+   // % 비율 구해서 label에 포함시키기
+   const rankLabelPer  = rankLabels.map((label, idx) => {
+   	const percent = ((rankSalaries[idx] / totalSalary) * 100).toFixed(1);
+   	return `${label} (${percent}%)`;
+   });
+
+
+   if (deptChartInstance) deptChartInstance.destroy();
+   if (rankChartInstance) rankChartInstance.destroy();
+
+   deptChartInstance = new Chart(document.getElementById('deptChart'), {
+	  plugins: [ChartDataLabels],
+      type: 'bar',
+      data: {
+         labels: deptLabels,
+         datasets: [{
+            label: '부서별 평균 급여',
+            data: deptSalaries,
+            backgroundColor: [
+				'rgba(255, 99, 132, 0.7)',
+				'rgba(54, 162, 235, 0.7)',
+				'rgba(255, 206, 86, 0.7)',
+				'rgba(75, 192, 192, 0.7)',
+				]
+         }]
+      },
+	   options: {
+	      responsive: true,
+	      maintainAspectRatio: false,
+	      scales: { y: { beginAtZero: true } },
+	      plugins: {
+	        datalabels: {
+	          formatter: function(value) {
+	            return value.toLocaleString() + '원';
+	          }
+	        }
+	      }
+	    }
+	  });
+
+   rankChartInstance = new Chart(document.getElementById('rankChart'), {
+	plugins: [ChartDataLabels],
+      type: 'pie',
+      data: {
+         labels: rankLabelPer,
+         datasets: [{
+            label: '직급별 평균 급여',
+            data: rankSalaries,
+            backgroundColor:[
+				'rgba(155, 99, 132, 0.7)',
+				'rgba(54, 162, 235, 0.7)',
+				'rgba(255, 206, 132, 0.7)',
+				'rgba(75, 192, 192, 0.7)',
+				'rgba(153, 102, 255, 0.7)'
+		] 
+
+         }]
+      },
+	   options: {
+	      responsive: true,
+	      maintainAspectRatio: false,
+	      scales: { y: { beginAtZero: true } },
+		  plugins: {
+			legend:{
+				position : 'right'
+			},
+		    datalabels: {
+		      formatter: function(value, context) {
+		        const percent = context.chart.data.labels[context.dataIndex]; // rankLabelPer에서 비율 가져오기
+		        return value.toLocaleString() + '원\n (' + percent + ')';
+		      },
+			  font:{
+				size:12
+			  },
+			  anchor: 'center',
+			  align: 'end',
+			  offset: -15,
+			  padding: 4,
+			  clamp: true,
+			  clip: false
+		    }
+		  }
+	    }
+	  });
+}
+
+function SalarySummary() {
+   const selectedDate = document.querySelector("#payDate").value;
+   if (!selectedDate) {
+      alert("년월을 선택해주세요.");
+      return;
+   }
+
+   const [payYear, payMonth] = selectedDate.split("-");
+   const getDate = [payYear, payMonth];
+   console.log("getDate",getDate);
+
+   console.log("보내기 전 확인",payYear, payMonth );
+   
+   $.ajax({
+      url: `/salary/summary?payYear=${payYear}&payMonth=${payMonth}`,
+      type: "GET",
+      success: function (res) {
+         console.log("res값", res);
+         console.log("res금액", res.totalNetSalary);
+         console.log("급여등록자", res.totalSalaryCount);
+         console.log("전송 데이터: ", { payYear, payMonth });
+         console.log("[payYear, payMonth]", [payYear, payMonth]);
+         
+         document.querySelector("#totalemp").innerText = `${res.totalemp}명`;
+         document.querySelector("#totalSalaryCount").innerText = `${res.totalSalaryCount}명`;
+         document.querySelector("#totalNetSalary").innerText = `${res.totalNetSalary.toLocaleString()}원`;
+         document.querySelector("#confirmCount").innerText = `${res.confirmedCount}명`;
+         document.querySelector("#selectedDate").innerText = `${getDate[0]}년`+`${getDate[1]}월`;
+         renderCharts(res.deptChartData, res.rankChartData);
+      },
+      error: function () {
+         alert("요약 정보 조회 실패");
+      }
+   });
+
+   loadSalaryList(payYear, payMonth);
+}
+
+
+function loadSalaryList(payYear, payMonth) {
+   $.ajax({
+      url: "/salary/list/data",
+      type: "GET",
+      data: { payYear, payMonth },
+      success: function (list) {
+         const tbody = document.querySelector(".table1 tbody");
+         tbody.innerHTML = "";
+
+         list.forEach(salaryVO => {
+            const emp = salaryVO.employeeList[0];
+            const row = `
+               <tr>
+                  <td>${salaryVO.payYear}년${salaryVO.payMonth}월</td>
+                  <td data-salaryid="${salaryVO.salaryId}">${salaryVO.empId}</td>
+                  <td>${emp.name}</td>
+                  <td>${emp.department.departmentName}</td>
+                  <td>${emp.team.teamName}</td>
+                  <td>${emp.rank.rankName}</td>
+				  <td>${salaryVO.baseSalary.toLocaleString()}</td>
+				  <td>${salaryVO.totalAllowance.toLocaleString()}</td>
+				  <td>${salaryVO.totalPay.toLocaleString()}</td>
+				  <td>${salaryVO.totalDeduction.toLocaleString()}</td>
+				  <td>${salaryVO.netSalary.toLocaleString()}</td>
+                  <td>
+                       <button type="button" class="btn btn-outline-primary btn-sm open-detail-modal"
+                         data-empid="${salaryVO.empId}"
+                         data-payyear="${salaryVO.payYear}"
+                         data-paymonth="${salaryVO.payMonth}">
+                         보기
+                       </button>
+                   <td>
+                     <div class="d-flex flex-column align-items-center">
+                       <button type="button"
+                         class="btn ${salaryVO.payStatus === '확정' ? 'btn-danger' : 'btn btn-outline-primary btn-sm'} btn-sm"
+                         onclick="salaryFinal(this)">
+                         ${salaryVO.payStatus ?? '확정대기'}
+                       </button>
+                       ${salaryVO.confirmDate ? `<small class="confirm-date text-muted mt-1">${salaryVO.confirmDate}</small>` : ''}
+                     </div>
+                   </td>
+                      
+                  <td>
+                  <div class="d-flex flex-column align-items-center">
+                     <button type="button" 
+                        class="btn ${salaryVO.paymentRequest === '요청완료' ? 'btn-danger' : 'btn btn-outline-primary btn-sm'}"
+                        onclick="salaryRequest(this)">
+                        ${salaryVO.paymentRequest ?? '요청대기'}
+                     </button>
+                     ${salaryVO.transferRequestDate ? `<small class="request-date text-muted mt-1">${salaryVO.transferRequestDate}</small>` : ''}
+                  </div>
+                  </td>
+                  
+                  <td>
+                     <button type="button" class="btn ${salaryVO.paid === '지급완료' ? 'btn-danger' : 'btn btn-outline-primary btn-sm'}"
+                        onclick="salaryPaid(this)">
+                        ${salaryVO.paid}
+                     </button>
+                  </td>
+				  
+				  
+				  
+               </tr>
+            `;
+            tbody.insertAdjacentHTML("beforeend", row);
+         });
+
+         //  DataTable 재초기화
+         if ($.fn.DataTable.isDataTable(".table1")) {
+            $(".table1").DataTable().destroy();
+         }
+		 $(".table1").DataTable({
+		    pageLength: 10,
+		    lengthChange: false,
+		    searching: true,
+		    ordering: true,
+		    info: true,
+		    columnDefs: [
+		       { targets: '_all', className: 'text-center' }  // ← 모든 컬럼 가운데 정렬
+		    ]
+		 });
+      },
+      error: function () {
+         alert("급여 리스트 조회 실패");
+      }
+   });
+}

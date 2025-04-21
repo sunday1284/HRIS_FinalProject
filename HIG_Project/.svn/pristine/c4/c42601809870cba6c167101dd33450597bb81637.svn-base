@@ -1,0 +1,16 @@
+package kr.or.ddit.mybatis.mappers.evaluation;
+
+import java.util.List;
+
+import org.apache.ibatis.annotations.Mapper;
+
+import kr.or.ddit.evaluation.vo.EvaluationTypeVO;
+import kr.or.ddit.evaluation.vo.EvaluationVO;
+
+@Mapper
+public interface EvaluationMapper {
+	
+    List<EvaluationTypeVO> selectEvaluationByRank();
+
+	public void insertEvaluation(EvaluationVO vo);
+}

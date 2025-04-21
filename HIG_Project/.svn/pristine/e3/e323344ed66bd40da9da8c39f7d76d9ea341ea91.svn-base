@@ -1,0 +1,62 @@
+package kr.or.ddit.employee.controller;
+
+import javax.inject.Inject;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import kr.or.ddit.annual.service.AnnualService;
+import kr.or.ddit.employee.service.EmployeeService;
+import kr.or.ddit.employee.vo.EmployeeVO;
+import kr.or.ddit.validate.InsertGroup;
+
+@Controller
+@RequestMapping("/employee/empFormUI")
+public class EmpInsertController {
+
+	@Inject
+	private EmployeeService service;
+	@Autowired
+	private AnnualService Aservice;
+	public static final String MODELNAME = "employee";
+
+	@GetMapping
+	public String formUI() {
+		
+		return "tiles:/employee/empFormUI";
+	}
+
+	@PostMapping
+	public String formProcess(
+			@Validated(InsertGroup.class) @ModelAttribute(MODELNAME) EmployeeVO employee
+			,BindingResult errors
+			,RedirectAttributes redirectAttributes
+		) { 
+		String logicalName = null;
+		boolean valid = !errors.hasErrors();
+		if (valid) {
+			service.createEmp(employee);
+			employee.getEmpId();
+			//여기서 연차 갯수 늘려주면 됨 Aservice.insertannual();
+			
+			logicalName = "redirect:/employee/empList";
+		} else {
+			redirectAttributes.addFlashAttribute(MODELNAME, employee);
+			String errorName = BindingResult.MODEL_KEY_PREFIX + MODELNAME;
+			redirectAttributes.addFlashAttribute(errorName, errors);
+
+			logicalName = "redirect:/employee/empFormUI";
+		}
+
+		return logicalName;
+	}
+
+}

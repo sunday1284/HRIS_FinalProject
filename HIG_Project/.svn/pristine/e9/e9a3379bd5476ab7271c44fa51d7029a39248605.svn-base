@@ -1,0 +1,150 @@
+let stompClient;
+const senderId = sessionStorage.getItem("currentUserId"); // 현재 로그인한 유저 ID
+
+function connectChatRoom() {
+  const socket = new SockJS("/wss");
+  stompClient = Stomp.over(socket);
+
+  stompClient.connect({}, function (frame) {
+    console.log("🟢 채팅방 연결됨:", frame);
+
+    stompClient.subscribe(`/topic/chat/${roomId}`, function (message) {
+      const chat = JSON.parse(message.body);
+      console.log("받은 메시지:", chat);
+      showMessage(chat, true); // 실시간 메시지 = 알림 가능
+    });
+  });
+}
+
+function sendMessage() {
+  const content = $("#chatInput").val();
+  if (!content || !senderId) return;
+
+  const msg = {
+    roomId: roomId,
+    senderId: senderId,
+    messageText: content
+  };
+
+  stompClient.send("/app/chat.send", {}, JSON.stringify(msg));
+  $("#chatInput").val("");
+}
+
+function showMessage(chat, notify = false) {
+  const isMine = chat.senderId === senderId;
+  const openRoomId = sessionStorage.getItem("openRoomId");
+
+  console.log(" notify:", notify, "isMine:", isMine);
+  console.log(" chat.roomId:", chat.roomId, "openRoomId:", openRoomId);
+
+  //알림 조건: 내가 보낸 메시지가 아니고, 권한 있고, 다른 방일 때만
+  if (notify && !isMine && Notification.permission === "granted") {
+    if (String(chat.roomId) !== openRoomId) {
+      console.log("브라우저 알림 실행!");
+      new Notification(`${chat.senderName}님`, {
+        body: chat.messageText,
+        icon: "https://cdn-icons-png.flaticon.com/512/3588/3588530.png"
+      });
+    } else {
+      console.log("현재 열려있는 채팅방이라 알림 X");
+    }
+  }
+
+  let sentTime = "";
+  if (chat.sentAt) {
+    const date = new Date(chat.sentAt);
+    if (!isNaN(date)) {
+      sentTime = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    }
+  }
+
+  const messageHtml = `
+    <div class="chat-message ${isMine ? 'mine' : 'other'}">
+      <div class="chat-bubble">
+        <div><strong>${chat.senderName}</strong>: ${chat.messageText}</div>
+        <div class="chat-time">${sentTime}</div>
+      </div>
+    </div>
+  `;
+
+  $("#chat-box").append(messageHtml);
+  $("#chat-box").scrollTop($("#chat-box")[0].scrollHeight);
+
+  if (!isMine) {
+    readMessage(chat.messageId, senderId);
+  }
+}
+
+function loadPreviousMessages() {
+  console.log("이전 메시지 로딩...");
+  $.ajax({
+    url: "/messenger/messages",
+    type: "GET",
+    data: { roomId: Number(roomId) },
+    success: function (messages) {
+      messages.forEach(msg => showMessage(msg, false)); // 알림 없이 출력
+    },
+    error: function () {
+      alert("이전 메시지를 불러오는 데 실패했습니다.");
+    }
+  });
+}
+
+function readMessage(messageId, empId) {
+  $.ajax({
+    url: "/messenger/message/read",
+    type: "POST",
+    data: { messageId, empId },
+    success: function () {
+      console.log("메시지 읽음 처리:", messageId);
+    },
+    error: function () {
+      console.error("메시지 읽음 실패:", messageId);
+    }
+  });
+}
+
+function requestNotificationPermission() {
+  if (!("Notification" in window)) {
+    alert("이 브라우저는 알림을 지원하지 않아요.");
+    return;
+  }
+
+  if (Notification.permission === "default") {
+    Notification.requestPermission().then(permission => {
+      if (permission === "granted") {
+        console.log("알림 권한 허용됨");
+      } else {
+        console.warn("알림 권한 거부됨");
+      }
+    });
+  } else {
+    console.log("📌 현재 알림 권한 상태:", Notification.permission);
+  }
+}
+
+$(document).ready(function () {
+  console.log("ChatRoom.js 로딩됨");
+
+  requestNotificationPermission(); // 알림 권한 요청
+  sessionStorage.setItem("openRoomId", String(roomId)); // 현재 방 열림 상태 저장
+
+  connectChatRoom();
+  loadPreviousMessages();
+
+  $("#sendBtn").on("click", sendMessage);
+
+  $("#chatInput").on("keypress", function (e) {
+    if (e.which === 13) sendMessage();
+  });
+
+  $("#closeBtn").on("click", function () {
+    sessionStorage.removeItem("openRoomId"); // 방 닫으면 상태 제거
+    window.close();
+  });
+
+  // 혹시 브라우저 창 닫을 때도 제거되게
+  window.addEventListener("beforeunload", function () {
+    sessionStorage.removeItem("openRoomId");
+  });
+});

@@ -1,0 +1,35 @@
+package kr.or.ddit.evaluation.controller;
+
+import java.util.List;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+
+@Controller
+@RequestMapping
+public class EvaluationDashBoardController {
+	
+	@GetMapping("/evaluation/evaluationDashBoard")
+	public String dashBoardMain() {
+		
+		return "tiles:evaluation/evaluationDashBoard";
+				      
+	}
+	
+	@GetMapping("/evaluation/evaluationList")
+	public String showEvaluationList(Model model) {
+//	     연도별 상/하반기, 직급별 인원수 데이터
+//	    List<EvaluationSummaryVO> summaryList = evaluationService.getEvaluationSummary();
+//
+//	    // 평가 대상자 리스트
+//	    List<EmployeeEvaluationVO> evaluationTargetList = evaluationService.getEvaluationTargets();
+//
+//	    model.addAttribute("summaryList", summaryList);
+//	    model.addAttribute("targetList", evaluationTargetList);
+
+	    return "tiles:evaluation/evaluationList";
+	}
+	
+}

@@ -1,0 +1,57 @@
+package kr.or.ddit.evaluation.service;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import kr.or.ddit.evaluation.exception.DuplicateEvaluationCandidateException;
+import kr.or.ddit.evaluation.vo.EvaluationCandidateVO;
+import kr.or.ddit.mybatis.mappers.evaluation.EvaluationCandidateMapper;
+import kr.or.ddit.rank.vo.RankVO;
+import lombok.RequiredArgsConstructor;
+
+@Service
+public class EvaluationCandidateServiceImpl implements EvaluationCandidateService {
+
+    @Autowired
+    private EvaluationCandidateMapper mapper;
+
+    
+    @Override
+    public List<EvaluationCandidateVO> selectAll(String rank, String year, String half) {
+        return mapper.readCandidateList(rank, year, half);
+    }
+
+    @Transactional
+    @Override
+    public void updateAll(List<EvaluationCandidateVO> candidates) {
+    	for (EvaluationCandidateVO candidate : candidates) {
+            if (mapper.existsCandidate(candidate) > 0) {
+                throw new DuplicateEvaluationCandidateException();
+            }
+
+            int result = mapper.insertCandidate(candidate);
+            if (result == 0) {
+                throw new RuntimeException("Insert 실패");
+            }
+        }
+    }
+
+    @Override
+    public List<RankVO> getAllRanks() {
+        return mapper.readAllRanks();
+    }
+    
+    @Override
+    public List<EvaluationCandidateVO> selectAllForInsert(String rank, String year, String half) {
+    	return mapper.readCandidateListForInsert(rank, year, half);
+    }
+    
+    @Override
+    public List<EvaluationCandidateVO> selectAllForHistory(String rank, String year, String half) {
+    	return mapper.readCandidateListForHistory(rank, year, half);
+    }
+}

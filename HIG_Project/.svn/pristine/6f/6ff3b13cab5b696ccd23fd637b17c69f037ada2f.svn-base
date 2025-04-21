@@ -1,0 +1,211 @@
+/**
+ * <pre>
+ * << 개정이력(Modification Information) >>
+ *   수정일        수정자           수정내용
+ *  -----------  -------------    ---------------------------
+ * 2025. 3. 19.      CHOI            최초 생성
+ * 2025. 4.  1.      CHOI            기안자 문서 상태 필터 select 태그 추가 및 랜더링 로직 수정
+ * </pre>
+ */
+
+$(document).ready(function () {
+    fetchMyDraftDocument();
+});
+
+function fetchMyDraftDocument(){
+    $.ajax({
+        url:"/approvalProcess/mydrafts",
+        type:"GET",
+        dataType: "json",
+        success : function (data){
+            console.log("기안문서 목록:", data);
+            // 전역 변수에 저장
+            window.draftData = data;
+            // HTML에 상태 필터 select 태그와 테이블을 함께 랜더링
+            readerDraftDocuments(data);
+            // 필터 select에 이벤트 바인딩
+            $('#draftStatusFilter').on('change', function(){
+                filterDraftDocuments(window.draftData);
+            });
+        },
+        error: function(xhr, status, error){
+            console.error("기안 문서 조회 실패:", error);
+        }
+    });
+}
+
+/**
+ * 기안 문서 목록과 상태 필터 select 태그를 함께 HTML에 랜더링하는 함수.
+ * @param {Array} data - REST API에서 받은 기안 문서 데이터
+ */
+function readerDraftDocuments(data) {
+    let html = `
+    <!-- 상태 필터 select (기안자 기준) -->
+    <div style="margin-bottom: 15px;">
+        <label for="draftStatusFilter">문서 상태 선택: </label>
+        <select id="draftStatusFilter" class="form-select" aria-label="Default select example">
+            <option value="all">전체</option>
+            <option value="대기">대기</option>
+            <option value="보류">보류</option>
+            <option value="반려">반려</option>
+            <option value="완료">완료</option>
+        </select>
+    </div>
+    <table id="approvalTable" class="table table-striped datatable">
+        <thead>
+            <tr>
+                <th><a href="#" class="dataTable-sorter">문서 ID</a></th>
+                <th><a href="#" class="dataTable-sorter">제목</a></th>
+                <th><a href="#" class="dataTable-sorter">기안일</a></th>
+                <th><a href="#" class="dataTable-sorter">상태</a></th>
+                <th><a href="#" class="dataTable-sorter">기안자</a></th>
+                <th><a href="#" class="dataTable-sorter">부서명</a></th>
+                <th><a href="#" class="dataTable-sorter">최종 결재자</a></th>
+                <th><a href="#" class="dataTable-sorter">첨부파일</a></th>
+            </tr>
+        </thead>
+        <tbody>`;
+    
+    data.forEach(function (doc) {
+        // 결재자 목록
+        let approvers = (doc.draftapproverList && doc.draftapproverList.length > 0)
+            ? doc.draftapproverList.map(a => `${a.approverId} (${a.approverStatus})`).join(", ")
+            : "결재 진행 중";
+
+        html += `<tr>
+            <td>${doc.draftId || '-'}</td>
+            <td>
+                <a href="/approval/myDraftDetailView?draftId=${doc.draftId}" class="draftDetailLink">
+                    ${doc.draftTitle || '-'}
+                </a>
+            </td>
+            <td>${formatDate(doc.draftDate) || '-'}</td>
+            <td>${doc.draftStatus || '-'}</td>
+            <td>${doc.employee ? doc.employee.name : '미등록'}</td>
+            <td>${doc.draftDepartmentName || '-'}</td>
+            <td>${approvers}</td>
+            <td>${doc.draftFile ? `<a href="/file/${doc.draftFile}" download>다운로드</a>` : 'N'}</td>
+        </tr>`;
+    });
+
+    html += `</tbody></table>`;
+
+    $("#draftDocumentsContainer").html(html);
+    initializeDataTable();
+}
+
+/**
+ * 선택한 상태에 따라 기안 문서 목록을 필터링하여 랜더링하는 함수.
+ * @param {Array} data - 전체 기안 문서 데이터
+ */
+function filterDraftDocuments(data) {
+    let filterStatus = $('#draftStatusFilter').val();
+
+    let filteredData = (filterStatus === 'all')
+        ? data
+        : data.filter(doc => doc.draftStatus === filterStatus);
+
+    let html = `
+    <!-- 상태 필터 select (기안자 기준) -->
+    <div style="margin-bottom: 15px;">
+        <label for="draftStatusFilter">문서 상태 선택: </label>
+        <select id="draftStatusFilter" class="form-select" aria-label="Default select example">
+            <option value="all" ${filterStatus === 'all' ? 'selected' : ''}>전체</option>
+            <option value="대기" ${filterStatus === '대기' ? 'selected' : ''}>대기</option>
+            <option value="보류" ${filterStatus === '보류' ? 'selected' : ''}>보류</option>
+            <option value="반려" ${filterStatus === '반려' ? 'selected' : ''}>반려</option>
+            <option value="완료" ${filterStatus === '완료' ? 'selected' : ''}>완료</option>
+        </select>
+    </div>
+    <table id="approvalTable" class="table table-striped datatable">
+        <thead>
+            <tr>
+                <th><a href="#" class="dataTable-sorter">문서 ID</a></th>
+                <th><a href="#" class="dataTable-sorter">제목</a></th>
+                <th><a href="#" class="dataTable-sorter">기안일</a></th>
+                <th><a href="#" class="dataTable-sorter">상태</a></th>
+                <th><a href="#" class="dataTable-sorter">기안자</a></th>
+                <th><a href="#" class="dataTable-sorter">부서명</a></th>
+                <th><a href="#" class="dataTable-sorter">최종 결재자</a></th>
+                <th><a href="#" class="dataTable-sorter">첨부파일</a></th>
+            </tr>
+        </thead>
+        <tbody>`;
+
+    if (!filteredData || filteredData.length === 0) {
+        html += `<tr><td colspan="8">등록된 문서가 없습니다.</td></tr>`;
+    } else {
+        filteredData.forEach(function (doc) {
+            let approvers = (doc.draftapproverList && doc.draftapproverList.length > 0)
+                ? doc.draftapproverList.map(a => `${a.approverId} (${a.approverStatus})`).join(", ")
+                : "결재 진행 중";
+
+            html += `<tr>
+                <td>${doc.draftId || '-'}</td>
+                <td>
+                    <a href="/approval/myDraftDetailView?draftId=${doc.draftId}" class="draftDetailLink">
+                        ${doc.draftTitle || '-'}
+                    </a>
+                </td>
+                <td>${formatDate(doc.draftDate) || '-'}</td>
+                <td>${doc.draftStatus || '-'}</td>
+                <td>${doc.employee ? doc.employee.name : '미등록'}</td>
+                <td>${doc.draftDepartmentName || '-'}</td>
+                <td>${approvers}</td>
+                <td>${doc.draftFile ? `<a href="/file/${doc.draftFile}" download>다운로드</a>` : 'N'}</td>
+            </tr>`;
+        });
+    }
+
+    html += `</tbody></table>`;
+
+    $("#draftDocumentsContainer").html(html);
+    initializeDataTable();
+
+    // 이벤트 재바인딩: 필터 select의 변경 이벤트
+    $('#draftStatusFilter').on('change', function(){
+        filterDraftDocuments(window.draftData);
+    });
+}
+
+/**
+ * 날짜 포맷 변환 (YYYY-MM-DD HH:mm 형식)
+ * @param {String} dateString - 날짜 문자열
+ * @returns {String} 포맷된 날짜 문자열
+ */
+function formatDate(dateString) {
+    if (!dateString) return "-";
+    let date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+        console.error("Invalid date format:", dateString);
+        return "-";
+    }
+    let year = date.getFullYear();
+    let month = ('0' + (date.getMonth() + 1)).slice(-2);
+    let day = ('0' + date.getDate()).slice(-2);
+    let hours = ('0' + date.getHours()).slice(-2);
+    let minutes = ('0' + date.getMinutes()).slice(-2);
+    return `${year}-${month}-${day} ${hours}:${minutes}`;
+}
+
+/**
+ * DataTable 초기화 함수
+ */
+function initializeDataTable() {
+    if ($.fn.DataTable && $.fn.DataTable.isDataTable('#approvalTable')) {
+        $('#approvalTable').DataTable().destroy();
+    }
+    const dataTable = new simpleDatatables.DataTable("#approvalTable", {
+        searchable: true,
+        fixedHeight: false,
+    });
+
+    document.getElementById("entriesPerPage")?.addEventListener("change", function() {
+        dataTable.pageLength = parseInt(this.value);
+        dataTable.refresh();
+    });
+
+    document.getElementById("searchBox")?.addEventListener("input", function() {
+        dataTable.search(this.value);
+    });
+}

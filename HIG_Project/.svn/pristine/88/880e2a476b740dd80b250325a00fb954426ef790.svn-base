@@ -1,0 +1,161 @@
+/** 
+ * <pre>
+ * << 개정이력(Modification Information) >>
+ *   
+ *   수정일      			수정자           수정내용
+ *  -----------   	-------------    ---------------------------
+ * 2025. 4. 2.     	youngjun            최초 생성
+ *
+ * </pre>
+ */
+
+function salaryRequest(obj){
+	const tr = obj.closest("tr");
+	console.log("요청버튼활성?");
+	
+	const empId = tr.querySelector("td[data-salaryid]").textContent.trim();
+	const salaryId = tr.querySelector("td[data-salaryid]").getAttribute("data-salaryid");
+	
+	console.log("data값확인",empId,salaryId);
+	
+	const fixFinal = tr.querySelector("button[onclick*='salaryFinal']"); //확정확인
+	const fixStatus = fixFinal.innerText.trim();
+	
+	if(fixStatus !== "확정"){
+		alert("지급 요청은 급여가 확정된 이후 가능합니다.");
+		return;
+	}
+	
+	let str_before = obj.innerText.trim();
+	let str_after = "";
+
+	if(str_before === "요청대기") {
+		str_after = "요청완료";
+		obj.classList.remove("btn-primary");
+		obj.classList.add("btn-danger");
+	} else {
+		str_after = "요청대기";
+		obj.classList.remove("btn-danger");
+		obj.classList.add("btn-primary");
+	}
+	
+	$.ajax({
+	   url:"/salary/request",
+	   type:"POST",
+	   data:{
+		empId:empId,
+		salaryId:salaryId 
+	   },
+	   success(res){
+		document.querySelector("#reqPayCount").innerText = `${res.reqCount}명`;
+		console.log("res값확인 요청쪽",res);
+		console.log("요청쪽cnt",res.cnt);
+		console.log("요청쪽reqDate",res.reqDate);
+		console.log("요청쪽res.reqPayCount",res.reqCount);
+		
+		if(res.cnt === 1){
+			obj.innerHTML = str_after
+			//나중에 인원수 카운트
+		}else{
+			alert("지급요청오류");
+		}
+		
+	   },
+	   error: function(){
+		alert("급여지급요청 실패");
+	   }	
+	});
+}
+
+let allReqStatus = false;
+function requestAll(obj){
+	console.log("일괄요청시작");
+	
+	const selectedDate = document.querySelector("#payDate").value;
+	const [selectYear, selectMonth] = selectedDate.split("-");
+	
+	const rows = document.querySelectorAll("#table1 tbody tr");
+	const allRequestList = [];
+	
+	
+	rows.forEach(row =>{
+		const salaryBtn =  row.querySelector("button[onclick*='salaryRequest']");
+		const status = salaryBtn?.innerText.trim();
+
+		const empId = row.querySelector("td[data-salaryid]")?.textContent.trim();
+		const salaryId = row.querySelector("td[data-salaryid]")?.getAttribute("data-salaryid");
+		
+	console.log("찍히는지만 확인");
+	console.log("empId",empId);
+	console.log("salaryId",salaryId);
+	
+	if(!allReqStatus && status === "요청대기"){
+		if(empId && salaryId) {
+			allRequestList.push({empId,salaryId});
+			}
+		}
+		
+		if(allReqStatus && status ==="요청완료"){
+			if(empId && salaryId) {
+			 allRequestList.push({ empId, salaryId });
+			}
+		}
+	});
+	
+	if(allRequestList.length===0) {
+		alert(allReqStatus ? "요청취소 대상이 없습니다." : "요청할 대상이 없습니다.");
+		return;
+	}
+	const param = {
+	   salaryList : allRequestList,
+	   payYear:selectYear,
+	   payMonth:selectMonth
+	};
+	console.log("param값",param);
+	
+	$.ajax({
+		url:"/salary/requestAll",
+		type:"POST",
+		contentType: "application/json",
+		data:JSON.stringify(param),
+		success:function(res){
+			console.log("res",res.count);
+			console.log("res.reqPayCount",res.reqPayCount);
+			
+			document.querySelector("#reqPayCount").innerText = `${res.reqPayCount}명`;
+			alert(allReqStatus ? "지급요청이 일괄 취소되었습니다." : "지급요청 일괄 신청완료");
+			
+			allReqStatus =!allReqStatus;
+			obj.innerText = allReqStatus ? "지급신청 일괄취소 " : "지급 일괄신청";
+			
+			allRequestList.forEach(item =>{
+				const row = [...rows].find(r=>r.querySelector("td[data-salaryid]")?.getAttribute("data-salaryid")===item.salaryId);
+				const btn = row?.querySelector("button[onclick*='salaryRequest']")
+				const dateDiv = row?.querySelector(".request-date");
+				
+				if(btn) {
+					btn.innerText = allReqStatus ? "요청완료":"요청대기";
+					btn.classList.toggle("btn-danger", allReqStatus);
+					btn.classList.toggle("btn-primary", !allReqStatus);
+				}
+				
+				if (dateDiv) {
+				    dateDiv.innerText = allReqStatus ? new Date().toISOString().split("T")[0] : "";
+				 }
+			});
+		},
+		error : function(){
+			alert("지급요청 처리실패");
+		}
+	});
+}
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,245 @@
+package kr.or.ddit.qr.controller;
+
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Hashtable;
+import java.util.Map;
+
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import javax.imageio.ImageIO;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.EncodeHintType;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.qrcode.QRCodeWriter;
+
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import kr.or.ddit.attendance.service.AttendanceService;
+import kr.or.ddit.attendance.vo.AttendanceVO;
+import kr.or.ddit.qr.service.QrService;
+import kr.or.ddit.qr.vo.QrVO;
+import lombok.extern.slf4j.Slf4j;
+/**
+ * 
+ * 
+ * @author 정태우
+ * @since 2025. 3. 14.
+ * @see
+ *
+ * <pre>
+ * << 개정이력(Modification Information) >>
+ *   
+ *   수정일      			수정자           수정내용
+ *  -----------   	-------------    ---------------------------
+ *  2025. 3. 12.     	정태우	          최초 생성
+ *
+ * </pre>
+ */
+@Controller
+@Slf4j
+@RequestMapping("/")
+public class QRCodeController {
+	private SecretKey secretKey;
+	
+	@Autowired
+	private AttendanceService service;
+	
+	@Autowired
+	private QrService qrservice;
+	
+    @Autowired
+    private QrWebSocket qrWebSocket;
+    
+    /**
+     * QR스캔시 들어오는 메서드 
+     * @param token
+     * @param model
+     * @return
+     */
+    @GetMapping("qrqr")
+    public ResponseEntity<String> locationQR(@RequestParam("token") String token) {
+        try {
+            // 1. QR 코드 유효성 검사
+            QrVO qrInfo = qrservice.getQRInfo(token);
+            if (qrInfo == null) throw new RuntimeException("유효하지 않은 QR 코드 입니다.");
+
+            LocalDateTime now = LocalDateTime.now();
+            String empId = qrInfo.getEmpId();
+            String expiresAt = qrInfo.getExpiresAt();
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            LocalDateTime expirationTime = LocalDateTime.parse(expiresAt, formatter);
+
+            // 2. QR 코드 만료 여부 확인
+            if (expirationTime.isBefore(now)) throw new RuntimeException("QR 코드가 만료되었습니다.");
+
+            // 3. 오늘의 출근 기록 조회
+            AttendanceVO existingAttendance = service.findTodayAttendance(empId);
+            DateTimeFormatter formatterDate = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+            DateTimeFormatter formatterTime = DateTimeFormatter.ofPattern("HH:mm:ss");
+            String formattedDate = now.format(formatterDate);
+            String formattedTime = now.format(formatterTime);
+
+            String message;
+            if (existingAttendance != null) {
+                // 퇴근 처리
+                existingAttendance.setWorkEndTime(formattedTime);
+                existingAttendance.setStatusId("STAT_03");
+                service.updateWorkEnd(existingAttendance);
+                message = "퇴근이 정상적으로 처리되었습니다.";
+            } else {
+                // 출근 처리
+                AttendanceVO attendance = new AttendanceVO();
+                attendance.setEmpId(empId);
+                attendance.setWorkDate(formattedDate);
+                attendance.setWorkStartTime(formattedTime);
+                attendance.setAttendanceStatus(now.toLocalTime().isBefore(LocalTime.of(9, 1)) ? "정상" : "지각");
+                attendance.setStatusId("STAT_01");
+                service.attendanceInsert(attendance);
+                message = "출근이 정상적으로 처리되었습니다.";
+            }
+
+            // 4. QR 코드 삭제 및 실시간 알림 전송
+            qrservice.deleteQR(token);
+            qrWebSocket.sendMessageToUser(empId, message);
+
+            // 5. 성공 시 JavaScript 반환 (자동으로 창 닫기)
+            String script = "<script> window.close();</script>";
+            return ResponseEntity.ok()
+                    .contentType(MediaType.TEXT_HTML)
+                    .body(script);
+
+        } catch (Exception e) {
+            // 6. 예외 발생 시 에러 메시지 반환
+            String errorScript = "<script>alert('오류 발생: " + e.getMessage() + "'); window.close();</script>";
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .contentType(MediaType.TEXT_HTML)
+                    .body(errorScript);
+        }
+    }
+
+	
+	/**
+	 * QR을 만들어주고 그 안에 동적인 IP와 토큰을 만들어줌
+	 * @param model
+	 * @param session
+	 * @param req
+	 * @return
+	 * @throws Exception
+	 */
+	@GetMapping("generate-qr")
+	public String generateQRCode(Model model, HttpSession session, HttpServletRequest req) throws Exception {
+	    Authentication account = SecurityContextHolder.getContext().getAuthentication();
+	    // 로그인된 사용자 ID
+	    String empId = account.getName(); 
+	    
+	    // QR 만료 시간 ( 5분 후 만료 )
+	    LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(5);
+	    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+	    String formattedExpireAt = expiresAt.format(formatter);
+	    
+	    // empID와 만료기한을 맵에 등록
+	    Map<String, Object> claims = new HashMap<>();
+	    claims.put("empId", empId);
+	    claims.put("formattedExpireAt", formattedExpireAt);
+	    
+	    // HmacSHA256 알고리즘을 사용하여 비밀 키 생성
+	    secretKey = createSecretKey();
+	    String token = Jwts.builder()
+	    		.setClaims(claims)
+	    	    .setExpiration(new Date(System.currentTimeMillis() + (5 * 60 * 1000))) // 5분 후 만료
+	    	    .signWith(SignatureAlgorithm.HS256, secretKey.getEncoded()) // byte[]로 변환된 비밀키 사용
+	    	    .compact();
+	    
+	    // DB에 QR 정보 저장 
+	    qrservice.saveQR(token, empId, formattedExpireAt);
+	    
+	    // 서버 IP 가져오기
+	    String ip = Getip();
+	    
+	    // QR에 넣어줄 링크 데이터 
+	    String qrData = "https://" + ip + req.getContextPath() + "/qrqr?token=" + token + "&autoClose=true";
+	    try {
+	        int size = 400; // QR 코드 사이즈 
+	        QRCodeWriter qrCodeWriter = new QRCodeWriter();
+	        Hashtable<EncodeHintType, Object> hints = new Hashtable<>();
+	        hints.put(EncodeHintType.MARGIN, 1); // QR 코드 여백 설정
+
+	        // QR 데이터로 QR 코드 생성
+	        BitMatrix bitMatrix = qrCodeWriter.encode(qrData, BarcodeFormat.QR_CODE, size, size, hints);
+
+	        // BitMatrix를 BufferedImage로 변환
+	        BufferedImage bufferedImage = new BufferedImage(size, size, BufferedImage.TYPE_INT_RGB);
+	        for (int x = 0; x < size; x++) {
+	            for (int y = 0; y < size; y++) {
+	                bufferedImage.setRGB(x, y, (bitMatrix.get(x, y)) ? 0x000000 : 0xFFFFFF); // 검정과 흰색으로 설정
+	            }
+	        }
+	        
+	        // 이미지를 ByteArray로 변환하여 Base64로 인코딩
+	        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+	        ImageIO.write(bufferedImage, "PNG", byteArrayOutputStream);
+	        byte[] qrImageBytes = byteArrayOutputStream.toByteArray();
+	        String qrCodeImage = "data:image/png;base64," + java.util.Base64.getEncoder().encodeToString(qrImageBytes);
+
+	        // 모델에 QR 코드 이미지 데이터 전달
+	        model.addAttribute("qrCode", qrCodeImage);
+	        
+	    } catch (Exception e) {
+	        throw new RuntimeException(e);
+	    }
+	    return "qr/QRcode"; // 모달로 QR코드를 랜더링 할 JSP
+	}
+	
+	// 비밀 키 생성 메소드 (HmacSHA256 알고리즘 사용)
+	private SecretKey createSecretKey() throws Exception {
+	    KeyGenerator keyGenerator = KeyGenerator.getInstance("HmacSHA256");
+	    keyGenerator.init(256); // 키 크기 설정 (256비트)
+	    return keyGenerator.generateKey();
+	}
+	
+	//유선 IP 추출
+	public String Getip() throws SocketException {
+	    String lanIp = null;
+
+	    for (NetworkInterface netIf : Collections.list(NetworkInterface.getNetworkInterfaces())) {
+	        String name = netIf.getName().toLowerCase();  // ✅ 인터페이스 이름 가져오기
+
+	        // ✅ 유선 LAN 키워드 수정 (출력된 인터페이스 이름에 맞춰 변경할 것)
+	        if (name.startsWith("eth") || name.startsWith("en") || name.contains("ethernet") || name.startsWith("ens")) {
+	            for (InetAddress addr : Collections.list(netIf.getInetAddresses())) {
+	                if (addr instanceof Inet4Address && !addr.isLoopbackAddress()) {
+	                    lanIp = addr.getHostAddress();  // ✅ 유선 LAN IP 가져오기
+	                    break;
+	                }
+	            }
+	        }
+	    }
+	    return lanIp;
+	}
+}

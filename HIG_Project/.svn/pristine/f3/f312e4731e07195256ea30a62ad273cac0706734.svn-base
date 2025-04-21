@@ -1,0 +1,49 @@
+/** 
+ * <pre>
+ * << 개정이력(Modification Information) >>
+ *   수정일      	수정자      	수정내용
+ *  -----------   	-------------    ---------------------------
+ * 2025. 3. 25.    youngjun         최초 생성
+ * </pre>
+ */
+
+document.addEventListener("DOMContentLoaded", () => {
+	console.log("명세서모달");
+
+	document.addEventListener("click", (e) => {
+		if (e.target.classList.contains("open-detail-modal")) {
+			const empId = e.target.getAttribute("data-empid");
+			const payYear = e.target.getAttribute("data-payyear");
+			const payMonth = e.target.getAttribute("data-paymonth");
+
+			console.log("모달확인", empId, payYear, payMonth);
+
+			$.ajax({
+				url: `/salary/detail/${empId}/${payYear}/${payMonth}`,
+				type: "GET",
+				success: function (html) {
+					document.querySelector("#exampleModal .modal-body").innerHTML = html;
+					const modal = new bootstrap.Modal(document.getElementById("exampleModal"));
+					modal.show();
+				},
+				error: function () {
+					alert("급여 명세서 불러오기 실패");
+				}
+			});
+		}
+	});
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+

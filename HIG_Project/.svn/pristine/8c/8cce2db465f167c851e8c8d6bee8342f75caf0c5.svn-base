@@ -1,0 +1,25 @@
+package kr.or.ddit.mybatis.mappers.evaluation;
+
+import java.util.List;
+
+import org.apache.ibatis.annotations.Mapper;
+
+import kr.or.ddit.evaluation.vo.EvaluationTypeVO;
+
+@Mapper
+public interface evaluationTypeMapper {
+	
+	// 인사평가 유형 리스트 조회 
+	public List<EvaluationTypeVO> evaluTypeList();
+	
+	// 직급별 인사 평가
+	public List<EvaluationTypeVO> evaluationRank();	
+	
+	// 유형 추가
+	public void insertEvaluType(EvaluationTypeVO evaluType);
+	
+	// 유형 삭제
+	public int deleteEvaluType(String evaluTypeId);
+
+	
+}

@@ -1,0 +1,18 @@
+package kr.or.ddit.boardcategory.vo;
+
+import java.io.Serializable;
+import java.util.List;
+
+import kr.or.ddit.board.vo.BoardVO;
+import lombok.Data;
+
+@Data
+public class BoardCategoryVO implements Serializable{
+	private Long categoryId;
+	private String categoryName;
+	private String description;
+	private String createdAt;
+	private String updatedAt;
+
+	private List<BoardVO> board;
+}

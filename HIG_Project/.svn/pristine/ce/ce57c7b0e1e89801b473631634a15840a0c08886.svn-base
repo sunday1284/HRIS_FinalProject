@@ -1,0 +1,38 @@
+package kr.or.ddit.evaluation.service;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import kr.or.ddit.evaluation.vo.EvaluationCandidateVO;
+import kr.or.ddit.evaluation.vo.EvaluationTypeVO;
+import kr.or.ddit.evaluation.vo.EvaluationVO;
+import kr.or.ddit.mybatis.mappers.evaluation.EvaluationMapper;
+
+@Service
+public class EvaluationServiceImpl implements EvaluationService {
+	
+	@Autowired
+	private EvaluationMapper mapper;
+	
+	// 피평가자 리스트 조회
+	@Override
+	public List<EvaluationCandidateVO> getEvaluationTargets(String evaluatorId) {
+	    return mapper.selectEvaluationTargets(evaluatorId);
+	}
+	
+	@Override
+	public List<EvaluationTypeVO> evaluationRank() {
+		return mapper.selectEvaluationByRank();
+	}
+
+	@Override
+	public void saveEvaluationList(List<EvaluationVO> list) {
+		for(EvaluationVO vo : list) {
+			mapper.insertEvaluation(vo);
+		}
+	}
+
+
+}

@@ -1,0 +1,304 @@
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>결재 양식 선택</title>
+    <!-- 필요한 라이브러리 (Font Awesome, Bootstrap 등) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/5.1.3/css/bootstrap.min.css">
+    
+    <style>
+        /* 공통 스타일 */
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+        .page-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border: none;
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            padding: 15px 20px;
+        }
+        /* 카테고리 및 템플릿 목록 스크롤 영역 높이 설정 */
+        .category-list,
+        .template-container {
+            height: calc(100vh - 220px);
+            /* 상단/하단 여백을 고려해 높이 조정 */
+            overflow-y: auto;
+        }
+        /* 카테고리 버튼 */
+        .category-btn {
+            width: 100%;
+            text-align: left;
+            margin-bottom: 8px;
+            padding: 12px 15px;
+            transition: all 0.3s;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+        .category-btn:hover {
+            background-color: #e9ecef;
+        }
+        .category-btn.active {
+            background-color: #0d6efd;
+            color: white;
+        }
+        /* 템플릿 목록 아이템 */
+        .template-item {
+            padding: 12px 15px;
+            transition: all 0.3s;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+        .template-item:hover {
+            background-color: #f1f3f5;
+        }
+        .template-item a {
+            color: #495057;
+            text-decoration: none;
+            display: block;
+        }
+        /* 카테고리 제목 */
+        .category-title {
+            border-left: 4px solid #0d6efd;
+            padding-left: 10px;
+            margin-bottom: 15px;
+        }
+        /* 템플릿 리스트 기본 숨김 / active 시 표시 */
+        .template-list { display: none; }
+        .template-list.active { display: block; }
+
+        /* 모달 관련 */
+        .modal-xl {
+            max-width: 90%;
+        }
+        .modal-content {
+            background-color: #f8f9fa;
+        }
+        #approvalFormContainer {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+        }
+        .approval-buttons-container {
+            display: flex;
+            justify-content: flex-start;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+<div class="page-container">
+    <div class="row">
+        <!-- 왼쪽 (col-md-3): 카테고리 목록 -->
+        <div class="col-md-3 mb-4 mb-md-0">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5><i class="fas fa-folder me-2"></i>카테고리</h5>
+                </div>
+                <div class="card-body p-3 category-list">
+                    <!-- "모든 양식 보기" 버튼 -->
+                    <button class="btn category-btn active" data-category="all" onclick="showTemplates('all')">
+                        <i class="fas fa-folder"></i> 모든 양식 보기
+                    </button>
+                    <!-- 동적 카테고리 목록 -->
+                    <c:forEach var="category" items="${categoryList}">
+                        <button class="btn category-btn" data-category="${category}" onclick="showTemplates('${category}')">
+                            <i class="fas fa-folder"></i> ${category}
+                        </button>
+                    </c:forEach>
+                </div>
+            </div>
+        </div>
+
+        <!-- 중앙 (col-md-5): 템플릿 목록 -->
+        <div class="col-md-5 mb-4 mb-md-0">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5><i class="fas fa-file-signature me-2"></i>결재 양식</h5>
+                </div>
+                <div class="card-body p-3 template-container">
+                    <!-- 템플릿 목록 -->
+                    <c:forEach var="category" items="${categoryList}">
+                        <div id="templates-${fn:replace(category, ' ', '_')}" class="template-list">
+                            <h4 class="category-title">${category}</h4>
+                            <div class="list-group">
+                                <c:set var="hasTemplates" value="false" />
+                                <c:forEach var="template" items="${draftEmpTemplate}">
+                                    <c:if test="${template.templateCategory eq category}">
+                                        <c:set var="hasTemplates" value="true" />
+                                        <div class="template-item">
+                                            <a href="javascript:void(0);"
+                                               onclick="openApprovalForm('${template.templateId}', '${template.templateTite}')">
+                                                <i class="fas fa-file-alt template-icon"></i>
+                                                ${template.templateTite}
+                                            </a>
+                                        </div>
+                                    </c:if>
+                                </c:forEach>
+                                <!-- 카테고리에 해당하는 템플릿이 없을 때 -->
+                                <c:if test="${hasTemplates eq 'false'}">
+                                    <div class="text-center text-muted py-4">
+                                        <i class="fas fa-search mb-2" style="font-size: 2rem;"></i><br />
+                                        <span>해당 카테고리의 양식이 없습니다.</span>
+                                    </div>
+                                </c:if>
+                            </div>
+                        </div>
+                    </c:forEach>
+                </div>
+            </div>
+        </div>
+
+        <!-- 오른쪽 (col-md-4): 임시저장 문서 목록 -->
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5><i class="fas fa-save me-2"></i>임시저장 문서 목록</h5>
+                </div>
+                <div class="card-body">
+                    <div id="draftListContainer">
+                        <!-- 임시저장 문서 목록이 여기에 표시됩니다. -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 결재 양식 모달 -->
+<div class="modal fade" id="approvalFormModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="approvalFormModalLabel">결재 양식</h5>
+                <!-- "닫기" 버튼은 data-bs-dismiss만 쓰고, JS에서 수동 hide()는 하지 않음 -->
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="approval-buttons-container">
+                    <button type="button" id="openOrgModalBtn" class="btn btn-info">승인자 추가</button>
+                </div>
+                <div id="approvalFormContainer">
+                    <!-- 결재 양식이 로딩되는 영역 -->
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary"></div>
+                        <p class="mt-2">결재 양식을 불러오는 중입니다...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <a id="downloadButton" class="btn btn-primary" download>다운로드</a>
+                <button type="button" class="btn btn-primary" id="submitApprovalBtn">상신</button>
+                <!-- 재상신 버튼 추가 (필요시 display:none;으로 초기 숨김 처리) -->
+                <button class="btn btn-primary" id="resubmitBtn">재상신</button>
+                <button class="btn btn-primary" id="tempSaveDraftBtn">임시저장</button>
+                <!-- 마찬가지로 data-bs-dismiss로만 닫기 -->
+                <button class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 조직도 모달 (FancyTree 활용) -->
+<div class="modal fade" id="orgModal" tabindex="-1" aria-labelledby="orgModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="orgModalLabel">결재 라인 선택</h5>
+                <!-- 조직도 모달 닫기 버튼도 data-bs-dismiss="modal" 만 사용 -->
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 10px;">
+                    <input type="text" id="empSearchInput" placeholder="이름, 팀, 부서 검색"
+                           class="form-control" style="width:200px; display:inline-block;">
+                    <button id="empSearchBtn" class="btn btn-primary" style="margin-left:5px;">검색</button>
+                    <button id="collapseAllBtn" class="btn btn-secondary" style="margin-left:5px;">전체 닫기</button>
+                </div>
+                <div id="orgTree"></div>
+            </div>
+            <div class="modal-footer">
+                <!-- "선택 저장"만 JS에서 수동 hide() 호출 -->
+                <button type="button" id="saveApprovalLineBtn" class="btn btn-primary">선택 저장</button>
+                <!-- 닫기 버튼은 data-bs-dismiss만 사용 (중복 hide() 없음) -->
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 별도 임시저장 기능 JS 파일 -->
+<script type="module" src="${pageContext.request.contextPath}/resources/js/approval/approvalTempDraftSave.js"></script>
+
+<!-- 기존 결재 관련 JS 파일들 -->
+<script src="${pageContext.request.contextPath}/resources/js/approval/approvalTemplate.js"></script>
+<script src="${pageContext.request.contextPath}/resources/js/approval/approvalDraft.js"></script>
+
+<script>
+    // 템플릿 목록 표시 함수
+    async function openApprovalForm(templateId, templateTitle) {
+        if (!templateId) {
+            alert("템플릿 ID가 올바르지 않습니다.");
+            return;
+        }
+        document.getElementById('approvalFormModalLabel').textContent = templateTitle + ' 결재 양식';
+        document.getElementById('approvalFormContainer').innerHTML = `
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary"></div>
+                <p class="mt-2">결재 양식을 불러오는 중입니다...</p>
+            </div>
+        `;
+        var modal = new bootstrap.Modal(document.getElementById('approvalFormModal'));
+        modal.show();
+        await loadTemplate(templateId); // 템플릿 HTML을 비동기로 로드
+        
+        // 템플릿 타이틀이 "연차신청서"라면, 폼의 제목 입력값을 강제로 세팅
+        if(templateTitle === "연차신청서") {
+            $("input[name='draftTitle']").val("연차신청서");
+        }
+    }
+
+    // 카테고리별 템플릿 목록 활성화 함수
+    function showTemplates(categoryName) {
+        document.querySelectorAll(".category-btn").forEach(btn => btn.classList.remove("active"));
+        const selected = document.querySelector(`.category-btn[data-category='${categoryName}']`);
+        if (selected) selected.classList.add("active");
+
+        // 모든 템플릿 목록 숨기기
+        document.querySelectorAll(".template-list").forEach(list => list.classList.remove("active"));
+        if (categoryName === "all") {
+            // 전체 보기
+            document.querySelectorAll(".template-list").forEach(list => list.classList.add("active"));
+        } else {
+            // 특정 카테고리만 보이기
+            const id = "templates-" + categoryName.replace(/\s+/g, "_");
+            const selectedList = document.getElementById(id);
+            if (selectedList) selectedList.classList.add("active");
+        }
+    }
+
+    // 페이지 로드시 기본적으로 "all" 카테고리 표시
+    document.addEventListener("DOMContentLoaded", function() {
+        showTemplates('all');
+    });
+</script>
+</body>
+</html>

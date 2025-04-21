@@ -1,0 +1,108 @@
+/**
+ * <pre>
+ *  회수/재상신 상세보기 페이지 JS 예시
+ * </pre>
+ */
+import { 
+  saveTempDraft, listAllDrafts, openSavedDraft, removeDraft,
+  generateUniqueDraftId, formatTimestampToLocal, fillDraftForm, storeRecalledDocInSession, submitReDraft
+} from './approvalTempDraftSave.js';
+
+document.addEventListener("DOMContentLoaded", async function() {
+
+  async function getLoggedInUserId() {
+    try {
+      const resp = await axios.get(window.contextPath + "/approvalProcess/getApproverId");
+      return resp.data;
+    } catch (error) {
+      console.error("로그인 사용자 ID 조회 실패:", error);
+      return null;
+    }
+  }
+
+  function getQueryParam(param) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(param);
+  }
+
+  // 기타 상세보기, 연차 폼 로드 등 기존 코드... (생략)
+
+  // 회수 버튼 이벤트
+  document.getElementById("retrieveBtn").addEventListener("click", async function() {
+    if (!confirm("회수 하시겠습니까?")) return;
+
+    const draftId = getQueryParam("draftId");
+    if (!draftId) {
+      alert("회수할 문서 ID가 없습니다.");
+      return;
+    }
+
+    const empId = await getLoggedInUserId();
+    if (!empId) {
+      alert("로그인된 사용자 정보를 가져오지 못했습니다.");
+      return;
+    }
+
+    let docData = null;
+    try {
+      const resp = await axios.post(window.contextPath + "/approval/drafter/recall", {
+        draftId: draftId,
+        empId: empId
+      });
+      alert(resp.data);
+
+      const detailResp = await axios.get(window.contextPath + "/approvalProcess/myDraftDetail", {
+        params: { draftId: draftId, empId: empId }
+      });
+      docData = detailResp.data;
+    } catch (error) {
+      console.error("회수 호출 실패", error);
+      alert("회수 호출 실패~");
+      return;
+    }
+
+    try {
+      if (docData) {
+        console.log("회수된 문서 docData:", docData);
+        storeRecalledDocInSession(docData, empId);
+        await listAllDrafts();
+      }
+    } catch (error) {
+      console.error("임시저장 처리 중 오류 발생", error);
+    }
+
+    window.location.href = window.contextPath + "/approval/templateList";
+  });
+
+  // 재상신 버튼 이벤트 (임시저장 데이터를 서버로 제출)
+  document.getElementById("resubmitBtn").addEventListener("click", async function() {
+    if (!confirm("재상신 하시겠습니까?")) return;
+
+    const draftId = getQueryParam("draftId");
+    if (!draftId) {
+      alert("재상신할 문서 ID가 없습니다.");
+      return;
+    }
+
+    // 임시저장된 데이터 불러오기
+    const empId = await getLoggedInUserId();
+    const key = `tempDraft_${empId}_${draftId}`;
+    const storedData = sessionStorage.getItem(key);
+    if (!storedData) {
+      alert("임시저장 데이터를 찾을 수 없습니다.");
+      return;
+    }
+    let draftData = JSON.parse(storedData);
+
+    // 재상신 전에 임시 draftId 제거
+    await submitReDraft(draftData);
+  });
+
+  // 페이지 로드시 상세 정보 불러오기 (예시)
+  const draftIdParam = getQueryParam("draftId");
+  if (draftIdParam) {
+    // loadDraftDetail() 함수 호출 (생략)
+  } else {
+    document.getElementById("detailContainer").innerHTML = "<p>문서 ID가 없습니다.</p>";
+  }
+});

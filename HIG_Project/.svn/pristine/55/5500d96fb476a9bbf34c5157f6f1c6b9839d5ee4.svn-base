@@ -1,0 +1,230 @@
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="http://www.springframework.org/tags/form" prefix="form" %>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>평가 대상자 조회 및 등록</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .selectField {
+            display: none; /* 초기에는 select 숨김 */
+        }
+        button {
+            margin: 5px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: white;
+            margin: 10% auto;
+            padding: 20px;
+            width: 30%;
+        }
+    </style>
+</head>
+<body>
+    <h2>평가 대상자 조회 및 등록</h2>
+    <form:form id="evaluationForm" action="EvaluationCandidateListController" method="post">
+	<div style="text-align: right; margin-bottom: 10px;">
+        <button type="submit" id="confirmBtn">대상자 확정</button>
+        <button type="button" id="editBtn">수정</button>
+        <button type="button" id="bulkUpdateBtn">일괄 입력</button>
+    </div>
+    
+    <!-- 조회 필터 -->
+    <div style="margin-bottom: 10px;">
+        <label for="rankFilter">직급:</label>
+        <select id="rankFilter">
+            <option value="">전체</option>
+            <c:forEach var="x" items="${candidateList}">
+                <option value="${x.rank.rankName}">${x.rank.rankName}</option>
+            </c:forEach>
+        </select>
+        <label for="yearFilter">평가년도:</label>
+        <select id="yearFilter">
+            <option value="">전체</option>
+            <c:forEach var="year" begin="2020" end="2030">
+                <option value="${year}">${year}</option>
+            </c:forEach>
+        </select>
+        <label for="halfYearFilter">구분:</label>
+        <select id="halfYearFilter">
+            <option value="">전체</option>
+            <option value="상반기">상반기</option>
+            <option value="하반기">하반기</option>
+        </select>
+        <button type="button" id="filterBtn">조회</button>
+    </div>   
+    
+        <table>
+            <thead>
+                <tr>
+                    <th>사번</th>
+                    <th>이름</th>
+                    <th>부서</th>
+                    <th>팀</th>
+                    <th>직급</th>
+                    <th>평가년도</th>
+                    <th>구분</th>
+                    <th>평가대상</th>
+                    <th>평가여부</th>
+                    <th><input type="checkbox" id="selectAll"></th>
+                </tr>
+            </thead>
+            <tbody>
+                <c:forEach var="x" items="${candidateList}">
+                    <tr class="<c:if test='${x.evaluationStatus == "Y" || x.isTarget == "N"}'>disabledRow</c:if>">
+                        <td>${x.empId}</td>
+                        <td>${x.employee.name}</td>
+                        <td>${x.department.departmentName}</td>
+                        <td>${x.team.teamName}</td>
+                        <td>${x.rank.rankName}</td>
+
+                        <!-- 평가년도 -->
+                        <td>
+                            <span class="textValue">${x.evaluationYear}</span>
+                            <select name="evaluationYear" class="evaluationYear selectField" disabled>
+                                <c:forEach var="year" begin="2020" end="2030">
+                                    <option value="${year}" ${x.evaluationYear == year ? 'selected' : ''}>${year}</option>
+                                </c:forEach>
+                            </select>
+                        </td>
+
+                        <!-- 구분 -->
+                        <td>
+                            <span class="textValue">${x.halfYear}</span>
+                            <select name="halfYear" class="halfYear selectField" disabled>
+                                <option value="상반기" ${x.halfYear == '상반기' ? 'selected' : ''}>상반기</option>
+                                <option value="하반기" ${x.halfYear == '하반기' ? 'selected' : ''}>하반기</option>
+                            </select>
+                        </td>
+
+                        <!-- 평가대상 -->
+                        <td>
+                            <span class="textValue">${x.isTarget}</span>
+                            <select name="isTarget" class="isTarget selectField" disabled>
+                                <option value="N" ${x.isTarget == 'N' ? 'selected' : ''}>N</option>
+                                <option value="Y" ${x.isTarget == 'Y' ? 'selected' : ''}>Y</option>
+                            </select>
+                        </td>
+
+                        <!-- 평가여부 -->
+                        <td>
+                            <span class="textValue">${x.evaluationStatus}</span>
+                            <select name="evaluationStatus" class="evaluationStatus selectField" disabled>
+                                <option value="N" ${x.evaluationStatus == 'N' ? 'selected' : ''}>N</option>
+                                <option value="Y" ${x.evaluationStatus == 'Y' ? 'selected' : ''}>Y</option>
+                            </select>
+                        </td>
+
+                        <!-- 체크박스 -->
+                        <td>
+                            <c:if test="${x.evaluationStatus != 'Y' && x.isTarget != 'N'}">
+                                <input type="checkbox" class="selectRow">
+                            </c:if>
+                        </td>
+                    </tr>
+                </c:forEach>
+            </tbody>
+        </table>
+    </form:form>
+
+    <script>
+        $(document).ready(function() {
+            // 전체 선택/해제
+            $('#selectAll').click(function() {
+                $('.selectRow').prop('checked', this.checked);
+            });
+
+         // 수정 버튼 클릭 시 선택된 직원들의 select 활성화/비활성화 및 버튼 텍스트 변경
+            $('#editBtn').click(function() {
+                let isEditing = $(this).text() === "수정"; // "수정"이 버튼 텍스트일 때
+
+                $('.selectRow:checked').each(function() {
+                    let row = $(this).closest('tr');
+                    // select 필드가 이미 활성화되어 있으면 비활성화하고 숨기기
+                    if (row.find('.selectField').is(':visible')) {
+                        row.find('.selectField').hide().prop('disabled', true);
+                    } else {
+                        // select 필드가 비활성화 되어 있으면 활성화하기
+                        row.find('.selectField').show().prop('disabled', false);
+                    }
+                });
+
+                // 버튼 텍스트 변경
+                if (isEditing) {
+                    $(this).text("취소");
+                } else {
+                    $(this).text("수정");
+                }
+            });
+
+            // 일괄 변경 기능
+            $('#bulkUpdateBtn').click(function() {
+                let field = prompt("변경할 항목을 선택하세요: 1. 평가년도, 2. 구분, 3. 평가대상, 4. 평가여부");
+
+                let value = "";
+                if (field == "1") {
+                    value = prompt("평가년도를 입력하세요 (2020~2040):");
+                    if (!/^(202[0-9]|2030)$/.test(value)) {
+                        alert("2020~2030 사이의 숫자만 입력 가능합니다.");
+                        return;
+                    }
+                } else if (field == "2") {
+                    value = prompt("구분을 입력하세요 (상반기/하반기):");
+                    if (!["상반기", "하반기"].includes(value)) {
+                        alert("상반기 또는 하반기만 입력 가능합니다.");
+                        return;
+                    }
+                } else if (field == "3" || field == "4") {
+                    value = prompt("Y 또는 N을 입력하세요:").toUpperCase();
+                    if (!["Y", "N"].includes(value)) {
+                        alert("Y 또는 N만 입력 가능합니다.");
+                        return;
+                    }
+                } else {
+                    alert("잘못된 입력입니다.");
+                    return;
+                }
+
+                $('.selectRow:checked').each(function() {
+                    let row = $(this).closest('tr');
+                    if (field == "1") row.find('.evaluationYear').val(value);
+                    else if (field == "2") row.find('.halfYear').val(value);
+                    else if (field == "3") row.find('.isTarget').val(value);
+                    else if (field == "4") row.find('.evaluationStatus').val(value);
+                });
+            });
+
+            // 폼 제출 시 소문자 Y/N을 대문자로 변환
+            $('#evaluationForm').submit(function() {
+                $('.isTarget, .evaluationStatus').each(function() {
+                    $(this).val($(this).val().toUpperCase());
+                });
+            });
+        });
+    </script>
+</body>
+</html>

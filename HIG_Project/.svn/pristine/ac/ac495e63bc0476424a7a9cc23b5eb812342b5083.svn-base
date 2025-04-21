@@ -1,0 +1,374 @@
+/**
+ * <pre>
+ *  회수/재상신 상세보기 페이지 JS (approvalMyDraftDetail.js)
+ *  - 임시저장 문서를 재상신할 수 있도록 하는 코드
+ * </pre>
+ */
+
+import { 
+  saveTempDraft, listAllDrafts, openSavedDraft, removeDraft,
+  generateUniqueDraftId, formatTimestampToLocal, fillDraftForm, storeRecalledDocInSession, submitReDraft 
+} from './approvalTempDraftSave.js';
+
+/** 
+ * DOMContentLoaded 후 메인 로직 시작 
+ */
+document.addEventListener("DOMContentLoaded", async function() {
+  // (A) 로그인한 사용자 ID 조회 함수
+  async function getLoggedInUserId() {
+    try {
+      const resp = await axios.get(window.contextPath + "/approvalProcess/getApproverId");
+      return resp.data;
+    } catch (error) {
+      console.error("로그인 사용자 ID 조회 실패:", error);
+      return null;
+    }
+  }
+
+  // (B) URL Query Parameter 추출 함수
+  function getQueryParam(param) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(param);
+  }
+
+  // (C) 연차 옵션 API로 불러오기 및 셀렉트 채우기 함수
+  async function loadAnnualCodeOptionsFromAPI() {
+    try {
+      const contextPath = window.contextPath || "";
+      const response = await axios.get(contextPath + "/resources/data/annualOptions.json");
+      return response.data;
+    } catch (error) {
+      console.error("연차 옵션 불러오기 실패:", error);
+      return [];
+    }
+  }
+
+  async function fillAnnualCodeOptionsFromAPI() {
+    const select = document.getElementById("annualCode");
+    if (!select) {
+      console.warn("annualCode 셀렉트 요소가 존재하지 않습니다.");
+      return;
+    }
+    const options = await loadAnnualCodeOptionsFromAPI();
+    select.innerHTML = "";
+    const defaultOption = document.createElement("option");
+    defaultOption.value = "";
+    defaultOption.text = "선택하세요";
+    select.appendChild(defaultOption);
+
+    options.forEach(opt => {
+      const option = document.createElement("option");
+      option.value = opt.cd;
+      option.text = opt.nm;
+      select.appendChild(option);
+    });
+  }
+
+  // (D) 연차 신청서 폼 HTML 로드 (CKEditor 적용)
+  async function loadAnnualFormHtml() {
+    try {
+      const resp = await axios.get(window.contextPath + "/resources/html/approval/approval1_1.html");
+      const annualFormContainer = document.getElementById("annualFormContainer");
+      if (annualFormContainer) {
+        // approval1_1.html 내용을 삽입
+        annualFormContainer.innerHTML = resp.data;
+        
+        // CKEditor 적용
+        const reasonElem = document.getElementById("reason");
+        if (reasonElem) {
+          // 이미 CKEDITOR.instances.reason이 있다면 제거
+          if (window.CKEDITOR && CKEDITOR.instances && CKEDITOR.instances.reason) {
+            CKEDITOR.instances.reason.destroy(true);
+          }
+          if (window.CKEDITOR) {
+            CKEDITOR.replace('reason', { versionCheck: false });
+          } else {
+            console.warn("CKEDITOR가 로드되지 않았습니다.");
+          }
+        }
+      } else {
+        console.warn("annualFormContainer 요소가 존재하지 않습니다.");
+      }
+    } catch (err) {
+      console.error("연차 신청서 폼 로드 실패:", err);
+    }
+  }
+
+  // (E) DB 날짜 문자열에서 날짜 부분만 추출하는 함수
+  function extractDateString(dbDateString) {
+    if (!dbDateString) return "";
+    return dbDateString.split(" ")[0];
+  }
+
+  // (F) 연차 신청서 폼에 데이터 매핑 함수
+  function loadAnnualForm(docInfo) {
+    const pureLeaveDate = extractDateString(docInfo.leaveDate);
+    const pureLeaveEndDate = extractDateString(docInfo.leaveEndDate);
+    const pureDraftDate = extractDateString(docInfo.draftDate);
+
+    const nameFields = [
+      { name: "draftUser", value: docInfo.draftEmpName },
+      { name: "draftDept", value: docInfo.draftDepartmentName },
+      { name: "draftDate", value: pureDraftDate },
+      { name: "docNo", value: docInfo.draftId }, // 문서번호(또는 draftId)
+      { name: "leaveDate", value: pureLeaveDate },
+      { name: "leaveEndDate", value: pureLeaveEndDate },
+      { name: "annualCode", value: docInfo.annualCode || "" }
+    ];
+
+    nameFields.forEach(field => {
+      const element = document.getElementsByName(field.name)[0];
+      if (element) {
+        if (element.tagName === 'SELECT') {
+          // 만약 필드 값이 배열이면 옵션을 생성
+          if (Array.isArray(docInfo[field.name])) {
+            let txt = '<option value="">선택하세요</option>\n';
+            docInfo[field.name].forEach(opt => {
+              txt += `<option value="${opt.cd}">${opt.nm}</option>\n`;
+            });
+            element.innerHTML = txt;
+            if (docInfo.hasOwnProperty(field.name + "Value")) {
+              element.value = docInfo[field.name + "Value"];
+            }
+          } else {
+            element.value = field.value;
+          }
+        } else {
+          element.value = field.value || "";
+        }
+      } else {
+        console.warn(`요소 [name="${field.name}"]가 존재하지 않습니다.`);
+      }
+    });
+
+    // CKEditor에 사유 내용 적용
+    if (window.CKEDITOR && CKEDITOR.instances && CKEDITOR.instances.reason) {
+      CKEDITOR.instances.reason.setData(docInfo.reason || "");
+    }
+  }
+
+  // (G) 결재자 목록 테이블에 데이터를 표시하는 함수
+  function fillApprovers(draftapproverList) {
+    // approval1_1.html 안에 approverTableBody가 있다고 가정
+    const approverTableBody = document.getElementById("approverTableBody");
+    if (!approverTableBody) {
+      console.warn("approverTableBody 요소가 존재하지 않습니다.");
+      return;
+    }
+    approverTableBody.innerHTML = "";
+
+    draftapproverList.forEach(function(approver) {
+      let row = document.createElement("tr");
+      row.innerHTML = `
+         <td style="text-align:center;">${approver.approverName || ""}</td>
+         <td style="text-align:center;">${approver.approverDepartmentName || ""}</td>
+         <td style="text-align:center;">${approver.approverRankName || ""}</td>
+         <td style="text-align:center;">${approver.aprSeq || ""}</td>
+         <td style="text-align:center;">${approver.aprStatus || ""}</td>
+       `;
+      approverTableBody.appendChild(row);
+    });
+  }
+
+  // (H) 상신 문서 상세 정보를 조회하고 UI에 반영하는 함수
+  async function loadDraftDetail() {
+    const draftId = getQueryParam("draftId");
+    if (!draftId) {
+      console.warn("URL에 draftId 파라미터가 없습니다. (상세보기 페이지가 아닐 수도 있음)");
+    }
+
+    try {
+      const loggedInUser = await getLoggedInUserId();
+      if (!loggedInUser) {
+        console.warn("로그인된 사용자 정보를 가져오지 못했습니다.");
+      }
+
+      if (draftId) {
+        // 1) 서버에서 문서 상세 정보 조회
+        const response = await axios.get(window.contextPath + "/approvalProcess/myDraftDetail", {
+          params: { draftId: draftId, empId: loggedInUser }
+        });
+        const data = response.data;
+        console.log("상신 문서 상세 데이터:", data);
+
+        // 2) JSP 내 문서 제목/작성자/작성일/상태 매핑
+        const docTitleEl = document.getElementById("draftTitle");
+        const draftEmpNameEl = document.getElementById("draftEmpName");
+        const draftDateEl = document.getElementById("draftDate");
+        const draftStatusEl = document.getElementById("draftStatus");
+
+        if (docTitleEl) {
+          docTitleEl.textContent = data.draftTitle || "[제목 없음]";
+        }
+        if (draftEmpNameEl) {
+          draftEmpNameEl.textContent = data.draftEmpName || "작성자 없음";
+        }
+        if (draftDateEl) {
+          draftDateEl.textContent = data.draftDate ? extractDateString(data.draftDate) : "작성일 없음";
+        }
+        if (draftStatusEl) {
+          draftStatusEl.textContent = data.draftStatus || "상태 없음";
+        }
+
+        // 3) 연차 신청서 폼 로드 + 데이터 매핑
+        await loadAnnualFormHtml(); // approval1_1.html 로드
+        await fillAnnualCodeOptionsFromAPI(); // 연차 코드 옵션 채우기
+        loadAnnualForm(data); // 문서 데이터 매핑 (draftUser, draftDept 등)
+        fillApprovers(data.draftapproverList || []); // 결재자 목록 테이블
+
+        // 4) 문서 상태에 따라 회수/재상신 버튼 표시
+        const resubmitBtn = document.getElementById("resubmitBtn");
+        const retrieveBtn = document.getElementById("retrieveBtn");
+        if (resubmitBtn) {
+          // '반려' 상태일 때만 재상신 버튼 노출
+          resubmitBtn.style.display = (data.draftStatus === "반려") ? "inline-block" : "none";
+        }
+        if (retrieveBtn) {
+          // '대기' or '결재 진행 중' or '보류'일 때 기안회수 노출
+          retrieveBtn.style.display = (
+            data.draftStatus === "대기" || 
+            data.draftStatus === "결재 진행 중" || 
+            data.draftStatus === "보류"
+          ) ? "inline-block" : "none";
+        }
+      } else {
+        // draftId가 없으면 폼만 로드
+        await loadAnnualFormHtml();
+        await fillAnnualCodeOptionsFromAPI();
+      }
+    } catch (error) {
+      console.error("문서 상세 정보 불러오기 실패:", error);
+      // 만약 detailContainer가 있다면 에러 표시
+      // document.getElementById("detailContainer").innerHTML = "<p>문서 상세 정보를 불러오는데 실패했습니다.</p>";
+    }
+  }
+
+  // (I) 회수 버튼 이벤트 처리
+  const retrieveBtn = document.getElementById("retrieveBtn");
+  if (retrieveBtn) {
+    retrieveBtn.addEventListener("click", async function() {
+      if (!confirm("회수 하시겠습니까?")) return;
+
+      let draftId = getQueryParam("draftId");
+      if (!draftId) {
+        draftId = $("#draftId").val();
+      }
+      if (!draftId) {
+        alert("회수할 문서 ID가 없습니다.");
+        return;
+      }
+
+      const empId = await getLoggedInUserId();
+      if (!empId) {
+        alert("로그인된 사용자 정보를 가져오지 못했습니다.");
+        return;
+      }
+
+      try {
+        // 1) 회수 API 호출
+        const resp = await axios.post(window.contextPath + "/approval/drafter/recall", {
+          draftId: draftId,
+          empId: empId
+        });
+        // 여기까지 성공 시, 회수는 이미 성공
+        alert(resp.data); // "기안 회수 성공" 메시지
+
+        // 2) 상세 재조회는 별도 try-catch로 처리
+        let docData = null;
+        try {
+          const detailResp = await axios.get(window.contextPath + "/approvalProcess/myDraftDetail", {
+            params: { draftId: draftId, empId: empId }
+          });
+          docData = detailResp.data;
+        } catch (error) {
+          console.warn("문서 상세 재조회 실패 → 이미 회수는 성공했으므로 진행", error);
+          // 재조회 실패 시에도 catch에서 alert를 띄우지 않고, 이후 로직 계속 진행
+        }
+
+        // 3) 회수된 문서를 임시저장 형태로 저장 (docData가 있으면)
+        if (docData) {
+          console.log("회수된 문서 docData:", docData);
+          storeRecalledDocInSession(docData, empId);
+          await listAllDrafts();
+        }
+
+        // 4) 페이지 이동
+        window.location.href = window.contextPath + "/approval/templateList";
+      } catch (error) {
+        // **이 부분**은 정말 "회수 API 호출" 자체가 실패한 경우만 실행됨
+        console.error("회수 호출 실패", error);
+        alert("회수 호출 실패~");
+        return;
+      }
+    });
+  } else {
+    console.warn("retrieveBtn 요소가 존재하지 않습니다.");
+  }
+
+
+
+  // (J) 재상신 버튼 이벤트 처리
+  const resubmitBtn = document.getElementById("resubmitBtn");
+  if (resubmitBtn) {
+    // 모달 내부의 재상신 버튼 클릭 이벤트 처리
+    const approvalFormModal = document.getElementById("approvalFormModal");
+    if (approvalFormModal) {
+      approvalFormModal.addEventListener("click", async function(e) {
+        if (e.target && e.target.id === "resubmitBtn") {
+          if (!confirm("재상신 하시겠습니까?")) return;
+
+          let draftId = getQueryParam("draftId");
+          if (!draftId) {
+            draftId = $("#draftId").val();
+          }
+          if (!draftId) {
+            alert("재상신할 문서 ID가 없습니다.");
+            return;
+          }
+
+          const empId = await getLoggedInUserId();
+          if (!empId) {
+            alert("로그인된 사용자 정보를 가져오지 못했습니다.");
+            return;
+          }
+
+          // sessionStorage에서 임시저장 데이터 읽어오기
+          const key = `tempDraft_${empId}_${draftId}`;
+          const storedData = sessionStorage.getItem(key);
+          if (!storedData) {
+            alert("임시저장 데이터를 찾을 수 없습니다.");
+            return;
+          }
+          let draftData = JSON.parse(storedData);
+
+          // 재상신 로직
+          await submitReDraft(draftData);
+			
+		  // 모달 요소 가져오기
+		  const modalElement = document.getElementById("approvalFormModal");
+
+		  // 기존 인스턴스가 있으면 사용, 없으면 새 인스턴스 생성
+		  let modalInstance = bootstrap.Modal.getInstance(modalElement);
+		  if (!modalInstance) {
+		    modalInstance = new bootstrap.Modal(modalElement);
+		  }
+
+		  // 모달 닫기
+		  modalInstance.hide();
+		  
+          // 서버 응답 성공 -> sessionStorage에서 제거
+          sessionStorage.removeItem(key);
+
+          // 임시 저장 목록 갱신
+          await listAllDrafts();
+		  
+		  
+        }
+      });
+    }
+  }
+
+  // (K) 페이지 로드 시 문서 상세 정보 조회
+  const draftIdParam = getQueryParam("draftId");
+  loadDraftDetail(); // draftIdParam이 없어도 폼 로드 등은 수행
+});

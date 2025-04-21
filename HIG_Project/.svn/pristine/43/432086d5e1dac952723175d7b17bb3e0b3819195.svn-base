@@ -1,0 +1,105 @@
+package kr.or.ddit.salary.controller;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import kr.or.ddit.salary.service.SalaryService;
+import kr.or.ddit.salary.vo.SalaryVO;
+import lombok.extern.slf4j.Slf4j;
+
+//전 직원리스트
+@Slf4j
+@Controller
+public class SalaryReadController {
+	
+	@Autowired
+	private SalaryService service;
+	
+	@GetMapping("/salary/list")
+	public String salaryList(Model model
+		,@RequestParam(value="date",required = false) String payYear
+		,@RequestParam(value="date",required = false) String payMonth
+		){
+		//1.전체 사원리스트
+		//2.2025.03 월만 필요 (년,월)
+		List<SalaryVO>salaryList = service.salaryList(payYear,payMonth);
+		SalaryVO salaryInfo = service.salaryInfo(payYear,payMonth);
+		model.addAttribute("salaryList", salaryList);
+		model.addAttribute("salaryInfo", salaryInfo);
+		return "tiles:salary/salaryList";
+	}
+	
+//	@GetMapping("/salary/list")
+//	@ResponseBody
+//	public List<SalaryVO> salaryList(Model model){
+//		Map<String, Object> infoMap = new HashMap<>();
+//		List<SalaryVO>salaryList = service.salaryList();
+//		SalaryVO salaryInfo = service.salaryInfo();
+//		infoMap.put("salaryInfo", salaryInfo);
+//		return service.salaryList();
+//	}
+//	
+	@GetMapping("/salary/detail/{empId}/{payYear}/{payMonth}")
+	public String salaryDetail(Model model, @PathVariable("empId") String empId,
+			@PathVariable("payYear")int payYear, @PathVariable("payMonth")int payMonth){
+		SalaryVO salarySelected = service.salarySelected(empId,payYear,payMonth);
+		model.addAttribute("salarySelected", salarySelected);
+		
+		return"salary/salarDetail";
+	} 
+	
+	// 요약 + 차트 데이터 직급, 부서별 평균급여 포함
+	@GetMapping("/salary/summary")
+	@ResponseBody
+	public Map<String, Object> getSalarySummary(@RequestParam(value="payYear",required = false)String payYear, 
+												@RequestParam(value="payMonth",required = false) String payMonth
+			) {
+		log.info("첨부터 문제: {} {}",payYear, payMonth);
+	    Map<String, Object> result = new HashMap<>();
+//	    SalaryVO summary = service.salarySelectedSummaryMonth(payYear, payMonth);
+	    SalaryVO salaryInfo = service.salaryInfo(payYear, payMonth);
+	    		
+	    List<SalaryVO> deptAvg = service.departMentAvgSalry(payYear, payMonth);
+	    List<SalaryVO> rankAvg = service.rankAvgSalary(payYear, payMonth);
+
+//	    log.info("summary.getTotalNetSalary()값확인....................{}",summary.getTotalNetSalary());
+	    
+	    log.info("파라미터 날짜확인 summary컨털~~~~~~~~~~{}",payYear);
+	    log.info("파라미터 날짜확인 summary컨털~~~~~~~~~~{}",payMonth);
+	    
+	    result.put("totalemp", salaryInfo.getTotalemp());//전체직원
+	    result.put("totalNetSalary", salaryInfo.getTotalNetSalary());//총실지급액
+	    result.put("confirmedCount", salaryInfo.getConfirmedCount());//확정인원
+	    log.info("getConfirmedCount:{}",salaryInfo.getConfirmedCount());
+	    result.put("totalSalaryCount", salaryInfo.getTotalSalaryCount());//급여등록자
+	    log.info("totalSalaryCount:{}",salaryInfo.getTotalSalaryCount());
+	    result.put("deptChartData", deptAvg);
+	    result.put("rankChartData", rankAvg);
+	    return result;
+	}
+	
+	@GetMapping("/salary/list/data")
+	@ResponseBody
+	public List<SalaryVO> getSalaryListData(@RequestParam String payYear, @RequestParam String payMonth) {
+		log.info("list/data쪽 확인~~~~~~:{}",service.salaryList(payYear, payMonth));
+	    return service.salaryList(payYear, payMonth); // JSON으로 자동 변환
+	}
+
+//	@GetMapping("/salary/final/list")
+//	public String finalSalaryList(Model model) {
+//		List<SalaryVO>finalList = service.finalSalaryList();
+//		model.addAttribute("finalList", finalList);
+//		return"tiles:salary/salaryFinalList";
+//	}
+	
+}

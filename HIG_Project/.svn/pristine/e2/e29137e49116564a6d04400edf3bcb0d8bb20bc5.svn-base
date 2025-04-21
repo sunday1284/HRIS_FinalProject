@@ -1,0 +1,22 @@
+package kr.or.ddit.salary.vo;
+
+import java.io.Serializable;
+
+import lombok.Data;
+import lombok.ToString;
+
+@ToString
+@Data
+public class AllowanceVO implements Serializable{
+	
+	private Long allowanceCode; // 수당코드(PK)
+	private Long allowanceId; // 수당ID
+	private Long salaryId; // 급여ID
+	private String empId; // 직원ID
+	private Long allowanceAmount; // 수당금액
+	private String createdAt; // 수당생성일
+	
+	private AllowanceCodeVO allowanceCodeVO;
+	private SalaryVO salary;
+
+}

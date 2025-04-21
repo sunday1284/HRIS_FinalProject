@@ -1,0 +1,892 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+   pageEncoding="UTF-8"%>
+<%@ taglib uri="http://www.springframework.org/security/tags" prefix="security" %>
+<%@ taglib uri="http://java.sun.com/jstl/core" prefix="c"%>
+<!--
+ * == 개정이력(Modification Information) ==
+ *
+ *   수정일               수정자           수정내용
+ *  ============      ============== =======================
+ *  2025. 3. 10.        정태우            최초 생성
+ *  2025. 3. 17.        이영준            사이드바 뎁스 추가
+ *  2025. 3. 20.        정태우            상단 이미지 경로 변경
+ *  2025. 3. 21.        이영준            급여등록 추가
+ *  2025. 3. 22.        이인구            사이드바 메뉴 클릭 시 유지 이벤트
+ *  2025. 3. 25.        김현수            사이드바 메뉴 클릭 시 유지 이벤트 성공, 다크모드 버튼 위치 변경
+ *  2025. 3. 27.        김현수            사이드바 메뉴 순서 변경
+ *  2025. 3. 28.        이영준            메뉴권한설정
+ *  2025. 3. 28.        김현수            메뉴로고 변경, 3뎁스 기능추가
+ *  2025. 3. 28.        최윤식			상신함 추가
+-->
+<style>
+/* 1. 로고를 왼쪽으로  */
+/* .logo { */
+/*     margin-left: -100px; /* 원하는 만큼 조정 */ */
+/* } */
+
+
+</style>
+<security:authentication property="principal" var="principal" />
+
+<div id="sidebar">
+   <div class="sidebar-wrapper active">
+      <div class="sidebar-header position-relative">
+<!--          <div class="d-flex justify-content-between align-items-center"> -->
+      <!-- 2.로고밑 버튼 -->
+      <div class="d-flex flex-column align-items-start">
+            <div class="logo">
+                 <a href="${pageContext.request.contextPath}/account/login/home">
+                    <img src="${pageContext.request.contextPath}/resources/template/dist/assets/static/images/logo/dditLogo.png"
+                         alt="Logo" srcset="" style="width: 200px; height: auto;">
+                </a>
+            </div>
+
+         <!-- 2.로고밑 버튼 -->
+          <div class="w-100"></div>
+
+            <div class="theme-toggle d-flex gap-2  align-items-center mt-2">
+               <svg xmlns="http://www.w3.org/2000/svg"
+                  xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true"
+                  role="img" class="iconify iconify--system-uicons" width="20"
+                  height="20" preserveAspectRatio="xMidYMid meet"
+                  viewBox="0 0 21 21">
+                          <g fill="none" fill-rule="evenodd"
+                     stroke="currentColor" stroke-linecap="round"
+                     stroke-linejoin="round">
+                              <path
+                     d="M10.5 14.5c2.219 0 4-1.763 4-3.982a4.003 4.003 0 0 0-4-4.018c-2.219 0-4 1.781-4 4c0 2.219 1.781 4 4 4zM4.136 4.136L5.55 5.55m9.9 9.9l1.414 1.414M1.5 10.5h2m14 0h2M4.135 16.863L5.55 15.45m9.899-9.9l1.414-1.415M10.5 19.5v-2m0-14v-2"
+                     opacity=".3"></path>
+                              <g transform="translate(-210 -1)">
+                                  <path d="M220.5 2.5v2m6.5.5l-1.5 1.5"></path>
+                                  <circle cx="220.5" cy="11.5" r="4"></circle>
+                                  <path
+                     d="m214 5l1.5 1.5m5 14v-2m6.5-.5l-1.5-1.5M214 18l1.5-1.5m-4-5h2m14 0h2"></path>
+                              </g>
+                          </g>
+                      </svg>
+               <div class="form-check form-switch fs-6">
+                  <input class="form-check-input  me-0" type="checkbox"
+                     id="toggle-dark" style="cursor: pointer"> <label
+                     class="form-check-label"></label>
+               </div>
+               <svg xmlns="http://www.w3.org/2000/svg"
+                  xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true"
+                  role="img" class="iconify iconify--mdi" width="20" height="20"
+                  preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24">
+                          <path fill="currentColor"
+                     d="m17.75 4.09l-2.53 1.94l.91 3.06l-2.63-1.81l-2.63 1.81l.91-3.06l-2.53-1.94L12.44 4l1.06-3l1.06 3l3.19.09m3.5 6.91l-1.64 1.25l.59 1.98l-1.7-1.17l-1.7 1.17l.59-1.98L15.75 11l2.06-.05L18.5 9l.69 1.95l2.06.05m-2.28 4.95c.83-.08 1.72 1.1 1.19 1.85c-.32.45-.66.87-1.08 1.27C15.17 23 8.84 23 4.94 19.07c-3.91-3.9-3.91-10.24 0-14.14c.4-.4.82-.76 1.27-1.08c.75-.53 1.93.36 1.85 1.19c-.27 2.86.69 5.83 2.89 8.02a9.96 9.96 0 0 0 8.02 2.89m-1.64 2.02a12.08 12.08 0 0 1-7.8-3.47c-2.17-2.19-3.33-5-3.49-7.82c-2.81 3.14-2.7 7.96.31 10.98c3.02 3.01 7.84 3.12 10.98.31Z">
+                          </path>
+                      </svg>
+            </div>
+            <div class="sidebar-toggler  x">
+               <a href="#" class="sidebar-hide d-xl-none d-block"><i
+                  class="bi bi-x bi-middle"></i></a>
+            </div>
+         </div>
+      </div>
+
+
+<security:authentication property="principal" var="principal" />
+      <div class="sidebar-menu">
+         <ul class="menu">
+            <li class="sidebar-title">Menu</li>
+
+
+			<li class="sidebar-item  " id="menu-calinder"><a href="${pageContext.request.contextPath }/schedule/mainhome" class='sidebar-link'>
+                           <i class="bi bi-calendar"></i> <span>내 일정 목록 테스트</span>
+            </a></li>
+
+			<li class="sidebar-item  " id="menu-calinder"><a href="${pageContext.request.contextPath }/schedule/list" class='sidebar-link'>
+                           <i class="bi bi-calendar"></i> <span>일정관리</span>
+            </a></li>
+
+
+            <li class="sidebar-item  " id="menu-board"><a
+               href="${pageContext.request.contextPath }/board/list"
+               class='sidebar-link'> <i class="bi bi-clipboard-check-fill"></i>
+                  <span>공지사항</span>
+            </a></li>
+
+         <li class="sidebar-item  has-sub" id="menu-attendance"><a href="#"
+                        class='sidebar-link'> <i class="bi bi-pen-fill"></i> <span>근태관리</span>
+                     </a>
+                        <ul class="submenu ">
+	                        <security:authorize access="hasAnyRole('HR_MANAGER', 'HR_ADMIN')">
+	                           <li class="submenu-item "><a href="${pageContext.request.contextPath }/workstauts/list">업무 상태 등록</a></li>
+	                           <li class="submenu-item "><a href="${pageContext.request.contextPath }/annual/list">휴가 항목 등록</a></li>
+	                        </security:authorize>
+	                           <li class="submenu-item "><a href="${pageContext.request.contextPath }/attendance/list">전사 근태 현황</a></li>
+	                           <li class="submenu-item "><a href="${pageContext.request.contextPath }/annualList">연차 보유 현황</a></li>
+	                           <%-- 위쪽은 전체 아래쪽은 내꺼--%>
+	                           <li class="submenu-item "><a href="${pageContext.request.contextPath }/MyAnnual?empId=${principal.realUser.empId}">내 연차 내역</a></li>
+	                           <li class="submenu-item "><a href="${pageContext.request.contextPath }/myAttendance?empId=${principal.realUser.empId}">내 근태 현황</a></li>
+                        </ul>
+          </li>
+
+            <li class="sidebar-item  has-sub" id="menu-approval"><a href="#"
+               class='sidebar-link'>
+               <i class="bi bi-file-earmark-spreadsheet-fill"></i> <span>전자결재</span>
+            </a>
+	               <ul class="submenu">
+	                  <li class="submenu-item has-sub">
+	                  	<a href="#" class="submenu-link">
+							<i class="bi bi-file-earmark-text"></i>기안문서 </a>
+							<ul class="submenu submenu-level-2">
+			                  <li class="submenu-item">
+			                  	<a class="submenu-link" href="${pageContext.request.contextPath }/approval/templateList">문서작성</a>
+			                  </li>
+			                  <li class="submenu-item"><a
+			                    class="submenu-link" href="${pageContext.request.contextPath }/approval/mydrafts">제출문서</a>
+			                  </li>
+			               </ul>
+		              </li>
+
+	                  <li class="submenu-item has-sub">
+	                    <a href="#" class="submenu-link">
+	                     <i class="bi bi-file-earmark-check"></i>결재문서 </a>
+							<ul class="submenu submenu-level-2">
+								<!--  결재자가 결재할 문서( 대기, 승인(결재라인 남을 때)상태, 승인 반려 상태로 종결한 문서-->
+				                  <li class="submenu-item"><a class="submenu-link" href="${pageContext.request.contextPath }/approval/approverDrafts">결재현황</a></li>
+				                  
+<%-- 				                  <li class="submenu-item"><a class="submenu-link"  href="${pageContext.request.contextPath }/approval/approver/processListView">결재진행</a></li> --%>
+<%-- 				                  <li class="submenu-item"><a class="submenu-link" href="${pageContext.request.contextPath }/approval/approver/complitedListView">결재완료</a></li> --%>
+			                 </ul>
+		              </li>
+
+		              <security:authorize access="hasAnyRole('HR_MANAGER', 'HR_ADMIN')">
+		                  <li class="submenu-item">
+		                  <a href="${pageContext.request.contextPath }/approval/list">결재양식(관리자)</a>
+		                  </li>
+				   	</security:authorize>
+	               </ul>
+
+            </li>
+
+		<security:authorize access="hasAnyRole('HR_MANAGER', 'HR_ADMIN')">
+         <li class="sidebar-item  has-sub" id="menu-hrman">
+               <a href="#" class='sidebar-link'> <i class="bi bi-file-earmark-person"></i> <span>인사관리</span></a>
+               <ul class="submenu ">
+                  <li class="submenu-item " id="menu-empman"><a href="${pageContext.request.contextPath }/employee/empList">직원관리</a></li>
+                  <li class="submenu-item " id="menu-empcard"><a href="${pageContext.request.contextPath }/employee/empCardList">인사기록카드</a></li>
+                  <li class="submenu-item " id="menu-hrapp"><a href="${pageContext.request.contextPath }/employee/appointList">인사발령</a></li>
+                  <li class="submenu-item " id="menu-resign"><a href="${pageContext.request.contextPath }/employee/resignList">퇴사관리</a></li>
+               </ul>
+            </li>
+         </security:authorize>
+
+		<security:authorize access="hasAnyRole('HR_MANAGER', 'HR_ADMIN')">
+            <li class="sidebar-item" id="menu-account"><a href="${pageContext.request.contextPath }/account/read"
+               class='sidebar-link'> <i class="bi bi-person-plus-fill"></i> <span>계정관리</span>
+            </a></li>
+			</security:authorize>
+
+		<security:authorize access="hasAnyRole('HR_MANAGER', 'HR_ADMIN')">
+         <li class="sidebar-item has-sub">
+         	<a href="table.html" class='sidebar-link'>
+               <i class="bi bi-credit-card"></i>
+               <span>급여관리</span>
+            </a>
+
+               <ul class="submenu ">
+                  <li class="submenu-item"><a href="${pageContext.request.contextPath }/salary/list">사원급여관리</a></li>
+                  <li class="submenu-item"><a href="${pageContext.request.contextPath }/salary/transfer/list">급여이체현황</a></li>
+               <li class="submenu-item has-sub">
+
+					<li class="submenu-item">
+					  <a href="${pageContext.request.contextPath}/Allowance/list" class="submenu-link">
+					    <i class="bi bi-list-ul"></i> 공제/수당 설정
+					  </a>
+					</li>
+
+					<li class="submenu-item has-sub">
+					  <a href="#" class="submenu-link">
+					    <i class="bi bi-credit-card"></i> 미사용(참고용)
+					  </a>
+					  <ul class="submenu submenu-level-2">
+					    <li class="submenu-item">
+					      <a class="submenu-link" href="${pageContext.request.contextPath}/salary/final/list">급여확정리스트 |<br>이체요청</a>
+					    </li>
+					    <li class="submenu-item">
+					      <a class="submenu-link" href="${pageContext.request.contextPath}/salary/transfer/request">급여지급</a>
+					    </li>
+					    <li class="submenu-item">
+					      <a class="submenu-link" href="${pageContext.request.contextPath}/salary/insert/form">급여등록</a>
+					    </li>
+					    <li class="submenu-item">
+					      <a class="submenu-link" href="${pageContext.request.contextPath}/work/list">근무조회</a>
+					    </li>
+					    <li class="submenu-item">
+					      <a class="submenu-link" href="${pageContext.request.contextPath}/work/insert">근무입력</a>
+					    </li>
+					  </ul>
+					</li>
+    		   </ul>
+
+	  </security:authorize>
+			<security:authorize access="hasAnyRole('HR_MANAGER', 'HR_ADMIN','TEAM_LEADER')">
+         <li class="sidebar-item  has-sub" id="menu-check"><a href="#"
+               class='sidebar-link'> <i class="bi bi-reception-4"></i> <span>성과관리</span>
+            </a>
+               <ul class="submenu ">
+<!--                   <li class="submenu-title " id="menu-checkgi">👤 인사팀 공용</li> -->
+                  <li class="sidebar-title" id="menu-docbox">👤 인사팀 공용</li>
+                  <li class="submenu-item " id="menu-checkgi"><a href="${pageContext.request.contextPath }/evaluation/evaluationDashboard">▩ 평가 현황</a></li>
+
+                  <li class="sidebar-title" id="menu-docbox">👤 인사팀장 공용</li>
+                  <li class="submenu-item " id="menu-perkpi"><a href="${pageContext.request.contextPath }/evaluation/evaluationCandidateList">▩ 대상자 관리</a></li>
+                  <li class="submenu-item " id="menu-perkpi"><a href="${pageContext.request.contextPath }/evaluation/evaluationTypeList"> [ KPI ] 설정</a></li>
+                  <li class="submenu-item " id="menu-perkpi"><a href="${pageContext.request.contextPath }/evaluation/evaluationDetail_Rank"> [ KPI ] 기준</a></li>
+
+                  <li class="sidebar-title" id="menu-docbox">👤 평가자 공용(부서장&인사&일반)</li>
+                  <li class="submenu-item " id="menu-perkpi"><a href="${pageContext.request.contextPath }/evaluation/KPIList">평가하기</a></li>
+                  <li class="submenu-item " id="menu-perkpi"><a href="${pageContext.request.contextPath }/evaluation/evaluationForm">종합평가</a></li>
+
+                  <li class="sidebar-title" id="menu-docbox">👤 전체 공용</li>
+                  <li class="submenu-item " id="menu-checklist"><a href="${pageContext.request.contextPath }/evaluation/result"> 결과 조회 </a></li>
+
+				  <li class="sidebar-title" id="menu-docbox">👤 삭제 예정</li>
+				  <li class="submenu-item " id="menu-perkpi"><a href="${pageContext.request.contextPath }/evaluation/criteriaList"> [ TEXT ] 성과기준 </a></li>
+                  <li class="submenu-item " id="menu-perkpi"><a href="${pageContext.request.contextPath }/evaluation/evaluationList">[ FORM ] XXX </a></li>
+               </ul>
+            </li>
+			</security:authorize>
+
+			<security:authorize access="hasAnyRole('HR_MANAGER', 'HR_ADMIN')">
+            <li class="sidebar-item has-sub " id="menu-org">
+             <a href="${pageContext.request.contextPath}/org" class="sidebar-link">
+                 <i class="bi bi-microsoft-teams"></i>
+                 <span>조직관리</span>
+             </a>
+             <ul class="submenu ">
+                 <li class="submenu-item " id="menu-deptman">
+                     <a href="${pageContext.request.contextPath}/department/list">부서관리</a>
+                 </li>
+                 <li class="submenu-item" id="menu-teamMan">
+                     <a href="${pageContext.request.contextPath}/team/list">팀 관리</a>
+                 </li>
+             </ul>
+         </li>
+		 </security:authorize>
+
+			<security:authorize access="hasAnyRole('HR_MANAGER', 'HR_ADMIN')">
+            <li class="sidebar-item has-sub" id="menu-recruitman"><a href="#"
+               class='sidebar-link'>
+               <i class="bi bi-people-fill"></i> <span>채용관리</span>
+            </a>
+               <ul class="submenu ">
+
+                  <li class="submenu-item" id="menu-reclist"><a href="${pageContext.request.contextPath }/recruit/board/list">채용공고 조회</a></li>
+                  <li class="submenu-item" id="menu-recinterlist"><a href="${pageContext.request.contextPath }/recruit/interview/list">면접자 조회</a></li>
+               </ul>
+            </li>
+            </security:authorize>
+
+
+
+
+            <li class="sidebar-item has-sub" id="menu-datadraft"><a href="table-datatable.html"
+               class='sidebar-link'> <i
+                  class="bi bi-clipboard-fill"></i> <span>전자 근로계약서</span>
+            </a>
+               <ul class="submenu ">
+               	  <security:authorize access="hasAnyRole('HR_MANAGER', 'HR_ADMIN')">
+                  <li class="submenu-item " id="menu-regform"><a
+                     href="${pageContext.request.contextPath }/contract/registerForm">근로계약서 작성하기</a>
+                  </li>
+                  <li class="submenu-item " id="menu-regformlist"><a
+                     href="${pageContext.request.contextPath }/contract/List">근로계약서 조회</a>
+                  </li>
+                  </security:authorize>
+                    <li class="submenu-item " id="menu-regformlist"><a
+                     href="${pageContext.request.contextPath }/contract/myContract">내 근로계약서</a>
+                  </li>
+               </ul></li>
+
+            <li class="sidebar-item  " id="menu-deptboard"><a
+               href="${pageContext.request.contextPath }/signature/registerForm"
+               class='sidebar-link'> <i class="bi bi-vector-pen"></i>
+                  <span>서명등록</span>
+            </a></li>
+
+
+<!--          <li class="sidebar-title" id="menu-etc">기타</li> -->
+
+            <li class="sidebar-item  " id="menu-deptboard"><a
+               href="${pageContext.request.contextPath }/departmentboard/list"
+               class='sidebar-link'> <i class="bi bi-clipboard2-fill"></i>
+                  <span>부서게시판</span>
+            </a></li>
+
+            <li class="sidebar-item  " id="menu-orgview"><a
+               href="${pageContext.request.contextPath }/employee/organization"
+               class='sidebar-link'> <i class="bi bi-diagram-3-fill"></i>
+                  <span>조직도</span>
+            </a></li>
+
+
+
+
+
+
+
+
+
+<!--             <li class="sidebar-title" id="menu-docbox">문서함</li> -->
+
+<!--             <li class="sidebar-item  has-sub" id="menu-appdocbox"><a href="#" -->
+<!--                class='sidebar-link'> <i class="bi bi-collection-fill"></i> <span>결재문서함</span> -->
+<!--             </a> -->
+<!--                <ul class="submenu "> -->
+<%--                   <li class="submenu-item " id="menu-docallbox"><a href="${pageContext.request.contextPath }/document/box/all">테스트용 전체문서함</a> --%>
+<!--                   </li> -->
+<%--                   <li class="submenu-item " id="menu-docappbox"><a href="${pageContext.request.contextPath }/document/box/approvedDoc">기결함</a> --%>
+<!--                   </li> -->
+<%--                   <li class="submenu-item " id="menu-docnotyetbox"><a href="${pageContext.request.contextPath }/approval/mydrafts">미결함</a> --%>
+<!--                   </li> -->
+<%--                   <li class="submenu-item " id="menu-docwillbox"><a href="${pageContext.request.contextPath }/document/box/preApprovalDoc">예결함</a> --%>
+<!--                   </li> -->
+<%--                   <li class="submenu-item " id="menu-docpostbox"><a href="${pageContext.request.contextPath }/document/box/postApprovalDoc">후결함</a> --%>
+<!--                   </li> -->
+<%--                   <li class="submenu-item " id="menu-docrejectbox"><a href="${pageContext.request.contextPath }/document/box/rejectedDoc">반려함</a> --%>
+<!--                   </li> -->
+<%--                   <li class="submenu-item " id="menu-docholdbox"><a href="${pageContext.request.contextPath }/document/box/holdedDoc">보류함</a> --%>
+<!--                   </li> -->
+<%--                   <li class="submenu-item " id="menu-docreferbox"><a href="${pageContext.request.contextPath }/document/box/referencedDoc">수신참조함</a> --%>
+<!--                   </li> -->
+<!--                </ul></li> -->
+
+<%--             <li class="sidebar-item" id="menu-doctransbox"><a href="${pageContext.request.contextPath }/document/box/transferredDoc" class='sidebar-link'> --%>
+<!--                   <i class="bi bi-collection-fill"></i> <span>이관문서함</span> -->
+<!--             </a></li> -->
+
+<!--             <li class="sidebar-item  has-sub" id="menu-deptdocbox"><a href="#" -->
+<!--                class='sidebar-link'> <i class="bi bi-collection-fill"></i> <span>부서문서함</span> -->
+<!--             </a> -->
+<!--                <ul class="submenu "> -->
+<%--                   <li class="submenu-item " id="menu-doccompbox"><a href="${pageContext.request.contextPath }/document/box/deptCompletedDoc">기안완료함</a> --%>
+<!--                   </li> -->
+<%--                   <li class="submenu-item " id="menu-docdeptreferbox"><a href="${pageContext.request.contextPath }/document/box/deptReferencedDoc">부서참조함</a> --%>
+<!--                   </li> -->
+<!--                </ul></li> -->
+
+
+
+            <br />
+            <br />
+            <br />
+            <br />
+            <br />
+            <br />
+            <li class="sidebar-title" id="menu-etcview">참고할 것들</li>
+
+            <li class="sidebar-item "><a
+               href="${pageContext.request.contextPath }/resources/template/dist/index.html"
+               class='sidebar-link'> <i class="bi bi-grid-fill"></i><span>Dashboard</span>
+            </a></li>
+
+            <li class="sidebar-item has-sub"><a href="#"
+               class='sidebar-link'> <i class="bi bi-stack"></i> <span>Components</span>
+            </a>
+               <ul class="submenu ">
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/component-accordion.html"
+                     class="submenu-link">Accordion</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/component-alert.html"
+                     class="submenu-link">Alert</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/component-badge.html"
+                     class="submenu-link">Badge</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/component-breadcrumb.html"
+                     class="submenu-link">Breadcrumb</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/component-button.html"
+                     class="submenu-link">Button</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/component-card.html"
+                     class="submenu-link">Card</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/component-carousel.html"
+                     class="submenu-link">Carousel</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/component-collapse.html"
+                     class="submenu-link">Collapse</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/component-dropdown.html"
+                     class="submenu-link">Dropdown</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/component-list-group.html"
+                     class="submenu-link">List Group</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/component-modal.html"
+                     class="submenu-link">Modal</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/component-navs.html"
+                     class="submenu-link">Navs</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/component-pagination.html"
+                     class="submenu-link">Pagination</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/component-placeholder.html"
+                     class="submenu-link">Placeholder</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/component-progress.html"
+                     class="submenu-link">Progress</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/component-spinner.html"
+                     class="submenu-link">Spinner</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/component-toasts.html"
+                     class="submenu-link">Toasts</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/component-tooltip.html"
+                     class="submenu-link">Tooltip</a></li>
+
+               </ul></li>
+
+            <li class="sidebar-item  has-sub"><a href="#"
+               class='sidebar-link'> <i class="bi bi-collection-fill"></i> <span>Extra
+                     Components</span>
+            </a>
+
+               <ul class="submenu ">
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/extra-component-avatar.html"
+                     class="submenu-link">Avatar</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/extra-component-comment.html"
+                     class="submenu-link">Comment</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/extra-component-divider.html"
+                     class="submenu-link">Divider</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/extra-component-date-picker.html"
+                     class="submenu-link">Date Picker</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/extra-component-flag.html"
+                     class="submenu-link">Flag</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/extra-component-sweetalert.html"
+                     class="submenu-link">Sweet Alert</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/extra-component-toastify.html"
+                     class="submenu-link">Toastify</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/extra-component-rating.html"
+                     class="submenu-link">Rating</a></li>
+
+               </ul></li>
+
+            <li class="sidebar-item  has-sub"><a href="#"
+               class='sidebar-link'> <i class="bi bi-grid-1x2-fill"></i> <span>Layouts</span>
+            </a>
+
+               <ul class="submenu ">
+
+                  <li class="submenu-item  "><a href="layout-default.html"
+                     class="submenu-link">Default Layout</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/layout-vertical-1-column.html"
+                     class="submenu-link">1 Column</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/layout-vertical-navbar.html"
+                     class="submenu-link">Vertical Navbar</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/layout-rtl.html"
+                     class="submenu-link">RTL Layout</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/layout-horizontal.html"
+                     class="submenu-link">Horizontal Menu</a></li>
+
+               </ul></li>
+
+            <li class="sidebar-title">Forms &amp; Tables</li>
+
+            <li class="sidebar-item  has-sub"><a href="#"
+               class='sidebar-link'> <i class="bi bi-hexagon-fill"></i> <span>Form
+                     Elements</span>
+            </a>
+
+               <ul class="submenu ">
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/form-element-input.html"
+                     class="submenu-link">Input</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/form-element-input-group.html"
+                     class="submenu-link">Input Group</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/form-element-select.html"
+                     class="submenu-link">Select</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/form-element-radio.html"
+                     class="submenu-link">Radio</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/form-element-checkbox.html"
+                     class="submenu-link">Checkbox</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/form-element-textarea.html"
+                     class="submenu-link">Textarea</a></li>
+
+               </ul></li>
+
+            <li class="sidebar-item  "><a
+               href="${pageContext.request.contextPath }/resources/template/dist/form-layout.html"
+               class='sidebar-link'> <i
+                  class="bi bi-file-earmark-medical-fill"></i> <span>Form
+                     Layout</span>
+            </a></li>
+
+            <li class="sidebar-item  has-sub"><a href="#"
+               class='sidebar-link'> <i class="bi bi-journal-check"></i> <span>Form
+                     Validation</span>
+            </a>
+
+               <ul class="submenu ">
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/form-validation-parsley.html"
+                     class="submenu-link">Parsley</a></li>
+
+               </ul></li>
+
+            <li class="sidebar-item  has-sub"><a href="#"
+               class='sidebar-link'> <i class="bi bi-pen-fill"></i> <span>Form
+                     Editor</span>
+            </a>
+
+               <ul class="submenu ">
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/form-editor-quill.html"
+                     class="submenu-link">Quill</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/form-editor-ckeditor.html"
+                     class="submenu-link">CKEditor</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/form-editor-summernote.html"
+                     class="submenu-link">Summernote</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/form-editor-tinymce.html"
+                     class="submenu-link">TinyMCE</a></li>
+
+               </ul></li>
+
+            <li class="sidebar-item  "><a
+               href="${pageContext.request.contextPath }/resources/template/dist/table.html"
+               class='sidebar-link'> <i class="bi bi-grid-1x2-fill"></i> <span>Table</span>
+            </a></li>
+
+            <li class="sidebar-item  has-sub"><a href="#"
+               class='sidebar-link'> <i
+                  class="bi bi-file-earmark-spreadsheet-fill"></i> <span>Datatables</span>
+            </a>
+
+               <ul class="submenu ">
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/table-datatable.html"
+                     class="submenu-link">Datatable</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/table-datatable-jquery.html"
+                     class="submenu-link">Datatable (jQuery)</a></li>
+
+               </ul></li>
+
+            <li class="sidebar-title">Extra UI</li>
+
+            <li class="sidebar-item  has-sub"><a href="#"
+               class='sidebar-link'> <i class="bi bi-pentagon-fill"></i> <span>Widgets</span>
+            </a>
+
+               <ul class="submenu ">
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/ui-widgets-chatbox.html"
+                     class="submenu-link">Chatbox</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/ui-widgets-pricing.html"
+                     class="submenu-link">Pricing</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/ui-widgets-todolist.html"
+                     class="submenu-link">To-do List</a></li>
+
+               </ul></li>
+
+            <li class="sidebar-item  has-sub"><a href="#"
+               class='sidebar-link'> <i class="bi bi-egg-fill"></i> <span>Icons</span>
+            </a>
+
+               <ul class="submenu ">
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/ui-icons-bootstrap-icons.html"
+                     class="submenu-link">Bootstrap Icons </a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/ui-icons-fontawesome.html"
+                     class="submenu-link">Fontawesome</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/ui-icons-dripicons.html"
+                     class="submenu-link">Dripicons</a></li>
+
+               </ul></li>
+
+            <li class="sidebar-item  has-sub"><a href="#"
+               class='sidebar-link'> <i class="bi bi-bar-chart-fill"></i> <span>Charts</span>
+            </a>
+
+               <ul class="submenu ">
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/ui-chart-chartjs.html"
+                     class="submenu-link">ChartJS</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/ui-chart-apexcharts.html"
+                     class="submenu-link">Apexcharts</a></li>
+
+               </ul></li>
+
+            <li class="sidebar-item  "><a
+               href="${pageContext.request.contextPath }/resources/template/dist/ui-file-uploader.html"
+               class='sidebar-link'> <i class="bi bi-cloud-arrow-up-fill"></i>
+                  <span>File Uploader</span>
+            </a></li>
+
+            <li class="sidebar-item  has-sub"><a href="#"
+               class='sidebar-link'> <i class="bi bi-map-fill"></i> <span>Maps</span>
+            </a>
+
+               <ul class="submenu ">
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/ui-map-google-map.html"
+                     class="submenu-link">Google Map</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/ui-map-jsvectormap.html"
+                     class="submenu-link">JS Vector Map</a></li>
+
+               </ul></li>
+
+            <li class="sidebar-item  has-sub"><a href="#"
+               class='sidebar-link'> <i class="bi bi-three-dots"></i> <span>Multi-level
+                     Menu</span>
+            </a>
+
+               <ul class="submenu ">
+
+                  <li class="submenu-item  has-sub"><a href="#"
+                     class="submenu-link">First Level</a>
+
+                     <ul class="submenu submenu-level-2 ">
+
+
+                        <li class="submenu-item "><a
+                           href="${pageContext.request.contextPath }/resources/template/dist/ui-multi-level-menu.html"
+                           class="submenu-link">Second Level</a></li>
+
+
+                     </ul></li>
+
+                  <li class="submenu-item  has-sub"><a href="#"
+                     class="submenu-link">Another Menu</a>
+
+                     <ul class="submenu submenu-level-2 ">
+
+
+                        <li class="submenu-item "><a
+                           href="${pageContext.request.contextPath }/resources/template/dist/ui-multi-level-menu.html"
+                           class="submenu-link">Second Level Menu</a></li>
+
+
+                     </ul></li>
+
+               </ul></li>
+
+            <li class="sidebar-title">Pages</li>
+
+            <li class="sidebar-item  "><a
+               href="${pageContext.request.contextPath }/resources/template/dist/application-email.html"
+               class='sidebar-link'> <i class="bi bi-envelope-fill"></i> <span>Email
+                     Application</span>
+            </a></li>
+
+            <li class="sidebar-item  "><a
+               href="${pageContext.request.contextPath }/resources/template/dist/application-chat.html"
+               class='sidebar-link'> <i class="bi bi-chat-dots-fill"></i> <span>Chat
+                     Application</span>
+            </a></li>
+
+            <li class="sidebar-item  "><a
+               href="${pageContext.request.contextPath }/resources/template/dist/application-gallery.html"
+               class='sidebar-link'> <i class="bi bi-image-fill"></i> <span>Photo
+                     Gallery</span>
+            </a></li>
+
+            <li class="sidebar-item  "><a
+               href="${pageContext.request.contextPath }/resources/template/dist/application-checkout.html"
+               class='sidebar-link'> <i class="bi bi-basket-fill"></i> <span>Checkout
+                     Page</span>
+            </a></li>
+
+            <li class="sidebar-item  has-sub"><a href="#"
+               class='sidebar-link'> <i class="bi bi-person-circle"></i> <span>Account</span>
+            </a>
+
+               <ul class="submenu ">
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/account-profile.html"
+                     class="submenu-link">Profile</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/account-security.html"
+                     class="submenu-link">Security</a></li>
+
+               </ul></li>
+
+            <li class="sidebar-item  has-sub"><a href="#"
+               class='sidebar-link'> <i class="bi bi-person-badge-fill"></i> <span>Authentication</span>
+            </a>
+
+               <ul class="submenu ">
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/auth-login.html"
+                     class="submenu-link">Login</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/auth-register.html"
+                     class="submenu-link">Register</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/auth-forgot-password.html"
+                     class="submenu-link">Forgot Password</a></li>
+
+               </ul></li>
+
+            <li class="sidebar-item  has-sub"><a href="#"
+               class='sidebar-link'> <i class="bi bi-x-octagon-fill"></i> <span>Errors</span>
+            </a>
+
+               <ul class="submenu ">
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/error-403.html"
+                     class="submenu-link">403</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/error-404.html"
+                     class="submenu-link">404</a></li>
+
+                  <li class="submenu-item  "><a
+                     href="${pageContext.request.contextPath }/resources/template/dist/error-500.html"
+                     class="submenu-link">500</a></li>
+
+               </ul></li>
+
+            <li class="sidebar-title">Raise Support</li>
+
+            <li class="sidebar-item  "><a
+               href="https://zuramai.github.io/mazer/docs" class='sidebar-link'>
+                  <i class="bi bi-life-preserver"></i> <span>Documentation</span>
+            </a></li>
+
+            <li class="sidebar-item  "><a
+               href="https://github.com/zuramai/mazer/blob/main/CONTRIBUTING.md"
+               class='sidebar-link'> <i class="bi bi-puzzle"></i> <span>Contribute</span>
+            </a></li>
+
+            <li class="sidebar-item  "><a
+               href="https://github.com/zuramai/mazer#donation"
+               class='sidebar-link'> <i class="bi bi-cash"></i> <span>Donate</span>
+            </a></li>
+
+         </ul>
+      </div>
+   </div>
+</div>
+<script src="${pageContext.request.contextPath}/resources/js/sidebar/sidebarMaintain.js"></script>
+
+<script>
+
+
+// 연습용
+//    document.querySelector(`a[href="\${location.pathname}"]`).parentElement.parentElement.classList.add("submenu-open")
+
+//    document.querySelector(`a[href="\${location.pathname}"]`).parentElement.parentElement.classList.contains("submenu")
+
+
+//    const menuItem = document.querySelector(`a[href="\${location.pathname}"]`);
+//    const parentMenu = menuItem?.parentElement?.parentElement;
+
+//    const isSubmenu = parentMenu?.classList.contains("submenu");
+
+//    if (isSubmenu) {
+//        parentMenu.classList.add("submenu-open");
+//    }
+
+
+// document.addEventListener("DOMContentLoaded", function(){
+// // 아래가 사용할 js코드
+// const menuItem = document.querySelector(`a[href="\${location.pathname}"]`);
+// if (menuItem) {
+//     // 해당 메뉴 링크의 직접 부모 (대개 <li class="submenu-item">)에 active 클래스 추가
+//     const activeSubItem = menuItem.parentElement;
+//     if (activeSubItem) {
+//         activeSubItem.classList.add("active");
+//     }
+// 	$(activeSubItem).parents(".submenu").addClass("submenu-open")
+// 	$(activeSubItem).parents(".has-sub").addClass("active")
+
+// 	}
+// })
+
+
+</script>
+
+

@@ -1,0 +1,306 @@
+/**
+ * <pre>
+ * << 개정이력(Modification Information) >>
+ *   수정일            수정자         수정내용
+ *  -----------    -------------    ---------------------------
+ * 2025. 3. 21.      CHOI            최초 생성
+ * 2025. 3. 23.      CHOI            상신함 상세보기
+ * 2025. 4. 1.       CHOI            코드 재정비
+ * </pre>
+ */
+document.addEventListener("DOMContentLoaded", async function() {
+  // -----------------------------
+  // 로그인한 사용자 ID 조회 함수
+  async function getLoggedInUserId() {
+    try {
+      const resp = await axios.get(window.contextPath + "/approvalProcess/getApproverId");
+      return resp.data; // 예: "2025031903"
+    } catch (error) {
+      console.error("로그인 사용자 ID 조회 실패:", error);
+      return null;
+    }
+  }
+
+  // -----------------------------
+  // URL query parameter 추출 함수
+  function getQueryParam(param) {
+    var urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(param);
+  }
+
+  // -----------------------------
+  // 연차 옵션을 API로 불러와 select에 채우는 함수
+  async function loadAnnualCodeOptionsFromAPI() {
+    try {
+      var contextPath = window.contextPath || "";
+      const response = await axios.get(contextPath + "/resources/data/annualOptions.json");
+      return response.data;
+    } catch (error) {
+      console.error("연차 옵션 불러오기 실패:", error);
+      return [];
+    }
+  }
+
+  async function fillAnnualCodeOptionsFromAPI() {
+    var select = document.getElementById("annualCode");
+    if (!select) return;
+    
+    var options = await loadAnnualCodeOptionsFromAPI();
+    select.innerHTML = "";
+    
+    var defaultOption = document.createElement("option");
+    defaultOption.value = "";
+    defaultOption.text = "선택하세요";
+    select.appendChild(defaultOption);
+    
+    options.forEach(function(opt) {
+      var option = document.createElement("option");
+      option.value = opt.cd;
+      option.text = opt.nm;
+      select.appendChild(option);
+    });
+  }
+
+  // -----------------------------
+  // 연차 신청서 폼 HTML 로드 함수 (CKEditor 적용 포함)
+  async function loadAnnualFormHtml() {
+    try {
+      var contextPath = window.contextPath || "";
+      const resp = await axios.get(contextPath + "/resources/html/approval/approval1_1.html");
+      var annualFormContainer = document.getElementById("annualFormContainer");
+      if (annualFormContainer) {
+        console.log("연차 신청서 폼 HTML 로드 성공:", resp.data);
+        annualFormContainer.innerHTML = resp.data;
+        console.log("연차 신청서 폼 로드 완료");
+        // CKEditor 적용: 로드된 폼 내부의 "reason" 텍스트영역에 적용
+        if(document.getElementById("reason")){
+          if(CKEDITOR.instances.reason) {
+            CKEDITOR.instances.reason.destroy(true);
+          }
+          CKEDITOR.replace('reason', { versionCheck: false });
+        }
+      } else {
+        console.warn("annualFormContainer 요소를 찾을 수 없습니다.");
+      }
+    } catch (err) {
+      console.error("연차 신청서 폼 로드 실패:", err);
+      var annualFormContainer = document.getElementById("annualFormContainer");
+      if (annualFormContainer) {
+        annualFormContainer.innerHTML = "<p>폼을 불러오는 데 실패했습니다.</p>";
+      }
+    }
+  }
+
+  // -----------------------------
+  // DB 날짜 문자열에서 날짜 부분만 추출하는 함수
+  function extractDateString(dbDateString) {
+    if (!dbDateString) return "";
+    return dbDateString.split(" ")[0];
+  }
+
+  // -----------------------------
+  // 연차 신청서 폼에 데이터 매핑 함수
+  function loadAnnualForm(docInfo) {
+    const pureLeaveDate = extractDateString(docInfo.leaveDate);
+    const pureLeaveEndDate = extractDateString(docInfo.leaveEndDate);
+    const pureDraftDate = extractDateString(docInfo.draftDate);
+
+    const nameFields = [
+      { name: "draftUser",    value: docInfo.draftEmpName },
+      { name: "draftDept",    value: docInfo.draftDepartmentName },
+      { name: "draftDate",    value: pureDraftDate },
+      { name: "docNo",        value: docInfo.draftId },
+      { name: "leaveDate",    value: pureLeaveDate },
+      { name: "leaveEndDate", value: pureLeaveEndDate },
+      { name: "annualCode",   value: docInfo.annualCode || "" }
+    ];
+
+    nameFields.forEach(field => {
+      const element = document.getElementsByName(field.name)[0];
+      if (element) {
+        if (element.tagName === 'SELECT') {
+          if (Array.isArray(docInfo[field.name])) {
+            let optionlist = docInfo[field.name];
+            let txt = '<option value="">선택하세요</option>\n';
+            for (let i = 0; i < optionlist.length; i++) {
+              let code = optionlist[i].cd;
+              let codename = optionlist[i].nm;
+              txt += `<option value="${code}">${codename}</option>\n`;
+            }
+            element.innerHTML = txt;
+            if (docInfo.hasOwnProperty(field.name + "Value")) {
+              element.value = docInfo[field.name + "Value"];
+            }
+          } else {
+            element.value = field.value;
+          }
+        } else {
+          element.value = field.value || "";
+        }
+      }
+    });
+
+    // CKEditor (reason) 데이터 채우기 (이미 CKEditor가 적용되어 있으면 해당 인스턴스에 데이터 설정)
+    const reasonElem = document.getElementsByName("reason")[0];
+    if (reasonElem) {
+      if (window.CKEDITOR && CKEDITOR.instances.reason) {
+        CKEDITOR.instances.reason.setData(docInfo.reason || "");
+      } else {
+        reasonElem.value = docInfo.reason || "";
+      }
+    }
+  }
+
+  // -----------------------------
+  // 결재자 목록 테이블 표시 함수 (approval1_1.html 내의 #approverTableBody)
+  function fillApprovers(draftapproverList) {
+    const approverTableBody = document.getElementById("approverTableBody");
+    if (!approverTableBody) return;
+    approverTableBody.innerHTML = "";
+    draftapproverList.forEach(function(approver) {
+      let row = document.createElement("tr");
+      row.innerHTML = `
+         <td style="text-align:center;">${approver.approverName || ""}</td>
+         <td style="text-align:center;">${approver.approverDepartmentName || ""}</td>
+         <td style="text-align:center;">${approver.approverRankName || ""}</td>
+         <td style="text-align:center;">${approver.aprSeq || ""}</td>
+         <td style="text-align:center;">${approver.aprStatus || ""}</td>
+       `;
+      approverTableBody.appendChild(row);
+    });
+  }
+
+  // -----------------------------
+  // 상신 문서 상세 정보 조회 함수 (상신자 기준)
+  async function loadDraftDetail() {
+    const draftId = getQueryParam("draftId");
+    if (!draftId) {
+      document.getElementById("detailContainer").innerHTML = "<p>문서 ID가 없습니다.</p>";
+      return;
+    }
+
+    try {
+      // ### CHANGED: empId(로그인 사용자)도 함께 전달해야 MyBatis에서 reason 조회 가능
+      const loggedInUser = await getLoggedInUserId();
+      if(!loggedInUser) {
+        console.warn("로그인된 사용자 정보를 가져오지 못했습니다.");
+      }
+
+      // 상신자 기준 상세보기 API 호출
+      const response = await axios.get(window.contextPath + "/approvalProcess/myDraftDetail", {
+        params: { draftId: draftId, empId: loggedInUser } // ★ empId 추가
+      });
+      const data = response.data; // DraftManageMentVO 객체
+      
+      // 1) 기안 문서 기본 정보
+      document.getElementById('draftTitle').textContent = data.draftTitle || '제목 없음';
+      document.getElementById('draftEmpName').textContent = data.draftEmpName || 'N/A';
+      document.getElementById('draftDate').textContent = data.draftDate || 'N/A';
+      document.getElementById('draftStatus').textContent = data.draftStatus || 'N/A';
+      
+      // 2) 기안 내용 처리
+      const contentArea = document.getElementById('draftContentArea');
+      if (contentArea) {
+        contentArea.innerHTML = data.draftContent ? data.draftContent.replace(/\n/g, '<br>') : '내용이 없습니다.';
+      }
+      
+      // 3) 연차 정보 표시
+      const annualInfo = document.getElementById('annualInfoContainer');
+      if (annualInfo) {
+        if (data.leaveDate || data.leaveEndDate) {
+          annualInfo.innerHTML = `
+            <p><strong>연차 시작일:</strong> ${data.leaveDate || ''}</p>
+            <p><strong>연차 종료일:</strong> ${data.leaveEndDate || ''}</p>
+            <p><strong>사유:</strong> ${data.reason || ''}</p> <!-- 여기에 사유가 표시됨 -->
+            <p><strong>연차 종류:</strong> ${data.annualName || ''}</p>
+          `;
+        } else {
+          annualInfo.innerHTML = `<p>연차 정보가 없습니다.</p>`;
+        }
+      }
+      
+      // 4) 첨부파일 목록 표시
+      const fileListEl = document.getElementById('fileList');
+      if (fileListEl) {
+        if (data.fileDetails && data.fileDetails.length > 0) {
+          fileListEl.innerHTML = "";
+          data.fileDetails.forEach(file => {
+            const li = document.createElement('li');
+            li.innerHTML = `<a href="${window.contextPath}/file/download?fileId=${file.fileId}">
+                                ${file.fileName}
+                            </a>`;
+            fileListEl.appendChild(li);
+          });
+        } else {
+          fileListEl.innerHTML = '<li>첨부파일 없음</li>';
+        }
+      }
+      
+      // 5) 연차 신청서 폼 로드 및 데이터 채우기 (폼 내부)
+      await loadAnnualFormHtml();
+      await fillAnnualCodeOptionsFromAPI();
+      loadAnnualForm(data);
+      
+      // 6) 결재자 목록을 "승인자명, 승인 순번, 상태" 테이블로 표시
+      if (data.draftapproverList && Array.isArray(data.draftapproverList)) {
+        fillApprovers(data.draftapproverList);
+      }
+      
+      // 7) 상세 정보 표시용 컨테이너 (옵션)
+      var detailContainer = document.getElementById("detailContainer");
+      if (detailContainer) {
+        let detailHtml = `
+           <h4>문서 상세 정보</h4>
+           <div><strong>문서 제목:</strong> ${data.draftTitle}</div>
+           <div><strong>기안자:</strong> ${data.draftEmpName}</div>
+           <div><strong>문서 상태:</strong> ${data.draftStatus}</div>
+        `;
+        detailContainer.innerHTML = detailHtml;
+      }
+      
+      // 8) 문서 상태에 따라 추가 버튼 보이기/숨기기
+      // 재상신 버튼: 문서 상태가 "반려"일 때만 보임
+      if (data.draftStatus === "반려") {
+        document.getElementById("resubmitBtn").style.display = "inline-block";
+      } else {
+        document.getElementById("resubmitBtn").style.display = "none";
+      }
+      
+      // 회수 버튼: 문서 상태가 "대기" 또는 "결재 진행 중"일 때 보임
+      if (data.draftStatus === "대기" || data.draftStatus === "결재 진행 중" || data.draftStatus === "보류") {
+        document.getElementById("retrieveBtn").style.display = "inline-block";
+      } else {
+        document.getElementById("retrieveBtn").style.display = "none";
+      }
+
+    } catch (error) {
+      console.error("문서 상세 정보 불러오기 실패:", error);
+      document.getElementById("detailContainer").innerHTML = "<p>문서 상세 정보를 불러오는데 실패했습니다.</p>";
+    }
+  }
+
+  // -----------------------------
+  // 추가 버튼 이벤트 (재상신, 회수)
+  // -----------------------------
+  document.getElementById("resubmitBtn").addEventListener("click", function() {
+    if(!confirm("재상신 하시겠습니까?")) return;
+    alert("재상신 기능 호출 (로직 구현 필요)");
+    // 예: window.location.href = window.contextPath + "/approvalProcess/resubmit?draftId=" + getQueryParam("draftId");
+  });
+
+  document.getElementById("retrieveBtn").addEventListener("click", function() {
+    if(!confirm("회수 하시겠습니까?")) return;
+    alert("회수 기능 호출 (로직 구현 필요)");
+  });
+
+
+  // -----------------------------
+  // 페이지 로드 시 상신 문서 상세 정보 불러오기
+  // -----------------------------
+  var draftIdParam = getQueryParam("draftId");
+  if (draftIdParam) {
+    loadDraftDetail();
+  } else {
+    document.getElementById("detailContainer").innerHTML = "<p>문서 ID가 없습니다.</p>";
+  }
+});

@@ -1,0 +1,572 @@
+/**
+ * <pre>
+ * << 개정이력(Modification Information) >>
+ *   수정일            수정자         수정내용
+ *  -----------    -------------    ---------------------------
+ * 2025. 3. 21.      CHOI            최초 생성
+ * 2025. 3. 23.      CHOI            시퀀스 기반 동적 id 처리 추가
+ * 2025. 3. 29.      CHOI            FancyTree 기반 조직도 결재라인 추가 기능 통합
+ * 2025. 4.  1.      CHOI            renderNode 방어코드 및 트리 재초기화, 부트스트랩 select, 조직도 검색 기능 추가
+ * </pre>
+ */
+
+$(document).ready(function() {
+    // 결재 진행함(기안 상세) 데이터 로드 및 처리
+    fn_approverProcess();
+
+    // 조직도 모달 관련 이벤트 등록
+    document.getElementById("openOrgModalBtn").addEventListener("click", function() {
+        openOrgModal();
+    });
+    document.getElementById("saveApprovalLineBtn").addEventListener("click", function() {
+        saveApprovalLineFromOrg();
+    });
+
+    // 결재 상신 버튼 이벤트
+    document.querySelector("#submitApprovalBtn").addEventListener("click", submitApprovalForm);
+});
+
+/* ================================
+   결재 진행함 관련 함수
+   ================================ */
+
+// 전역 변수에 결재자 ID와 진행 문서 데이터를 저장
+window.approverId = null;
+window.approverData = [];
+
+/**
+ * 결재 진행함 목록을 AJAX로 조회 (결재자 기준)
+ */
+function fn_approverProcess() {
+    getLoggedInApproverId(function(approverId) {
+        if (!approverId) {
+            console.warn("로그인한 결재자 ID를 가져오지 못했습니다.");
+            return;
+        }
+        $.ajax({
+            url: '/approvalProcess/approverDrafts',
+            type: 'GET',
+            data: { aprId: approverId },
+            dataType: 'json',
+            success: function(data) {
+                console.log("결재자 기준 문서 조회:", data);
+                window.approverData = data;
+                renderDraftDocuments(data);
+            },
+            error: function() {
+                console.error("문서 조회 실패");
+                $("#draftDocumentsContainer").html(
+                    `<tr><td colspan="10">⚠️ 문서 조회 중 오류가 발생했습니다.</td></tr>`
+                );
+            }
+        });
+    });
+}
+
+/**
+ * 로그인한 결재자 ID를 AJAX로 조회하는 함수.
+ */
+function getLoggedInApproverId(callback) {
+    $.ajax({
+        url: '/approvalProcess/getApproverId',
+        type: 'GET',
+        success: function(empId) {
+            console.log("현재 로그인한 결재자 ID:", empId);
+            callback(empId);
+        },
+        error: function(xhr, status, error) {
+            console.error("결재자 ID 조회 실패:", error);
+            callback(null);
+        }
+    });
+}
+
+/**
+ * 결재 진행 문서 목록을 테이블에 랜더링하는 함수.
+ * (결재 진행 상태가 '승인'이면 "승인중 (결재자명)"으로 표시)
+ */
+function renderDraftDocuments(data) {
+    let html = "";
+    if (!data || data.length === 0) {
+        console.warn("등록된 기안 문서가 없습니다.");
+        html = `<tr><td colspan="10">등록된 기안 문서가 없습니다.</td></tr>`;
+    } else {
+        console.log("문서 개수:", data.length);
+        data.forEach(function(doc, index) {
+            console.log(`[${index}] 개별 데이터:`, doc);
+            let approvers = doc.draftApproverList && doc.draftApproverList.length > 0
+                ? doc.draftApproverList.map(a => `${a.approverName} (${a.aprStatus})`).join(", ")
+                : "결재 진행 중";
+            let processStatus = doc.aprStatus;
+            if (processStatus === "승인") {
+                processStatus = "승인중 (" + (doc.approverName || '-') + ")";
+            } else if (!processStatus) {
+                processStatus = "미정";
+            }
+            html += `<tr>
+                        <td><input type="hidden" value="${doc.draftId}" />${doc.draftId || '-'}</td>
+                        <td>
+                            <a href="/approval/draft/detailView?draftId=${doc.draftId}" class="draftDetailLink">
+                                ${doc.draftTitle || '-'}
+                            </a>
+                        </td>
+                        <td>${formatDate(doc.draftDate) || '-'}</td>
+                        <td>${doc.draftStatus || '-'}</td>
+                        <td>${doc.draftEmpName || '미등록'}</td>
+                        <td>${doc.approverDepartmentName  || '미정'}</td>
+                        <td>${doc.approverName || '미정'}</td>
+                        <td>${doc.aprYn === 'Y' ? '승인' : doc.aprYn === 'N' ? '미승인' : '미정'}</td>
+                        <td>${processStatus}</td>
+                        <td>${doc.draftFile ? `<a href="/file/${doc.draftFile}" download>다운로드</a>` : 'N'}</td>
+                     </tr>`;
+        });
+    }
+    $("#draftDocumentsContainer").html(html);
+    initializeDataTable();
+}
+
+/**
+ * 날짜 포맷 변환 (YYYY-MM-DD HH:mm 형식)
+ */
+function formatDate(dateString) {
+    if (!dateString) return "-";
+    let date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+        console.error("Invalid date format:", dateString);
+        return "-";
+    }
+    let year = date.getFullYear();
+    let month = ('0' + (date.getMonth() + 1)).slice(-2);
+    let day = ('0' + date.getDate()).slice(-2);
+    let hours = ('0' + date.getHours()).slice(-2);
+    let minutes = ('0' + date.getMinutes()).slice(-2);
+    return `${year}-${month}-${day} ${hours}:${minutes}`;
+}
+
+/**
+ * DataTable 초기화 함수
+ */
+function initializeDataTable() {
+    if ($.fn.DataTable && $.fn.DataTable.isDataTable('#approvalTable')) {
+        $('#approvalTable').DataTable().destroy();
+    }
+    const dataTable = new simpleDatatables.DataTable("#approvalTable", {
+        searchable: true,
+        fixedHeight: false,
+    });
+    document.getElementById("entriesPerPage")?.addEventListener("change", function() {
+        dataTable.pageLength = parseInt(this.value);
+        dataTable.refresh();
+    });
+    document.getElementById("searchBox")?.addEventListener("input", function() {
+        dataTable.search(this.value);
+    });
+}
+
+/**
+ * 결재 진행 상태 필터링 함수 (select 태그 값에 따라)
+ */
+function filterApproverProcessList(data) {
+    let filterVal = $('#statusFilter').val();
+    let filteredData = (filterVal === 'all')
+        ? data
+        : data.filter(doc => doc.aprStatus === filterVal);
+    let tableHeader = `
+        <table id="approvalTable" class="table table-striped datatable">
+            <thead>
+                <tr>
+                    <th><a href="#" class="dataTable-sorter">문서 ID</a></th>
+                    <th><a href="#" class="dataTable-sorter">제목</a></th>
+                    <th><a href="#" class="dataTable-sorter">기안일</a></th>
+                    <th><a href="#" class="dataTable-sorter">상태</a></th>
+                    <th><a href="#" class="dataTable-sorter">기안자</a></th>
+                    <th><a href="#" class="dataTable-sorter">부서</a></th>
+                    <th><a href="#" class="dataTable-sorter">결재자</a></th>
+                    <th><a href="#" class="dataTable-sorter">결재 진행 상태</a></th>
+                    <th><a href="#" class="dataTable-sorter">첨부파일</a></th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+    let tableBody = "";
+    if (!filteredData || filteredData.length === 0) {
+        tableBody = `<tr><td colspan="9">등록된 문서가 없습니다.</td></tr>`;
+    } else {
+        filteredData.forEach(function(doc) {
+            let approvers = doc.draftApproverList && doc.draftApproverList.length > 0
+                ? doc.draftApproverList.map(a => `${a.approverName} (${a.aprStatus})`).join(", ")
+                : "결재 진행 중";
+            let processStatus = doc.aprStatus;
+            if (processStatus === "승인") {
+                processStatus = "승인중 (" + (doc.approverName || '-') + ")";
+            } else if (!processStatus) {
+                processStatus = "미정";
+            }
+            tableBody += `
+                <tr>
+                    <td>${doc.draftId || '-'}</td>
+                    <td>
+                        <a href="/approval/draft/detailView?draftId=${doc.draftId}" class="draftDetailLink">
+                            ${doc.draftTitle || '-'}
+                        </a>
+                    </td>
+                    <td>${formatDate(doc.draftDate) || '-'}</td>
+                    <td>${doc.draftStatus || '-'}</td>
+                    <td>${doc.draftEmpName || '미등록'}</td>
+                    <td>${doc.approverDepartmentName || '미정'}</td>
+                    <td>${doc.approverName || '미정'}</td>
+                    <td>${processStatus}</td>
+                    <td>${doc.draftFile ? `<a href="/file/${doc.draftFile}" download>다운로드</a>` : 'N'}</td>
+                </tr>
+            `;
+        });
+    }
+    let tableFooter = `
+            </tbody>
+        </table>
+    `;
+    let finalHtml = `
+        <div style="margin-bottom: 15px;">
+            <label for="statusFilter" style="margin-right: 8px;">결재 상태 선택:</label>
+            <select id="statusFilter" class="form-select" aria-label="Default select example" style="width:200px;">
+                <option value="all" ${filterVal === 'all' ? 'selected' : ''}>전체</option>
+                <option value="보류" ${filterVal === '보류' ? 'selected' : ''}>보류</option>
+                <option value="승인" ${filterVal === '승인' ? 'selected' : ''}>승인</option>
+            </select>
+        </div>
+        ${tableHeader}
+        ${tableBody}
+        ${tableFooter}
+    `;
+    $("#draftDocumentsContainer").html(finalHtml);
+    initializeDataTable();
+    $('#statusFilter').on('change', function(){
+        filterApproverProcessList(window.approverData);
+    });
+}
+
+/* ================================
+   조직도(결재라인) 모달 및 검색 기능
+   ================================ */
+
+document.addEventListener("DOMContentLoaded", function() {
+    console.log("DOM fully loaded. 조직도 모달 이벤트 등록");
+    document.getElementById("openOrgModalBtn").addEventListener("click", function() {
+        console.log("openOrgModalBtn clicked");
+        openOrgModal();
+    });
+    document.getElementById("saveApprovalLineBtn").addEventListener("click", function() {
+        console.log("saveApprovalLineBtn clicked");
+        saveApprovalLineFromOrg();
+    });
+});
+
+/**
+ * 조직도 모달을 열어 FancyTree를 초기화하고, 조직도 데이터를 불러옴
+ */
+function openOrgModal() {
+    console.log("openOrgModal 호출됨");
+    let existingTree = $.ui.fancytree.getTree("#orgTree");
+    if (existingTree) {
+        existingTree.destroy();
+    }
+    var currentEmpId = document.getElementById("empId").value;
+    axios.get('/approval/employee/getLineApprovers', { params: { empId: currentEmpId } })
+        .then(function(response) {
+            let treeData = response.data;
+            console.log("서버에서 받은 FancyTree용 데이터:", treeData);
+
+            // FancyTree 초기화
+            $("#orgTree").fancytree({
+                icon: false,
+                checkbox: true,
+                glyph: {
+                    map: {
+                        expanderClosed: "fas fa-plus-square",
+                        expanderOpen: "fas fa-minus-square",
+                        folder: "fas fa-folder",
+                        folderOpen: "fas fa-folder-open"
+                    }
+                },
+                source: treeData,
+                renderNode: function(event, data) {
+                    var node = data.node;
+                    var $span = $(node.span);
+                    var $title = $span.find(".fancytree-title");
+                    var iconHtml = "";
+
+                    if (node.folder) {
+                        if (node.key.startsWith("dept_")) {
+                            iconHtml = "<i class='fas fa-building'></i> ";
+                        } else if (node.key.startsWith("team_")) {
+                            iconHtml = "<i class='fas fa-users'></i> ";
+                        }
+                        $title.html(iconHtml + node.title);
+                    } else {
+                        iconHtml = "<i class='fas fa-user'></i> ";
+                        var rankName = node.data.rankName ? node.data.rankName : "";
+                        $title.html(iconHtml + node.title + (rankName ? " (" + rankName + ")" : ""));
+                        // 직원 노드에 클래스 및 data 속성 추가
+                        $(node.span)
+                            .addClass("employee-item")
+                            .attr("data-name", node.title)
+                            .attr("data-dept", node.data.departmentName || "")
+                            .attr("data-team", node.data.teamName || "");
+                    }
+                }
+            });
+
+            // **중복 등록 방지**: 기존 이벤트 핸들러를 모두 off() 한 뒤 새로 on()
+            $("#empSearchBtn").off("click");
+            $("#empSearchInput").off("keypress");
+            $("#collapseAllBtn").off("click");
+
+            // 검색 버튼 클릭
+            $("#empSearchBtn").on("click", function () {
+                const keyword = $("#empSearchInput").val().trim();
+                if (keyword) searchAndExpandTree(keyword);
+            });
+
+            // 엔터키 입력 시 검색
+            $("#empSearchInput").on("keypress", function (e) {
+                if (e.which === 13) {
+                    $("#empSearchBtn").click();
+                }
+            });
+
+            // 전체 접기 버튼
+            $("#collapseAllBtn").on("click", function () {
+                $("#orgTree").fancytree("getTree").visit(function(node) {
+                    node.setExpanded(false);
+                });
+            });
+
+            // 모달 열기
+            var modal = new bootstrap.Modal(document.getElementById("orgModal"));
+            modal.show();
+        })
+        .catch(function(error) {
+            console.error("조직도 데이터를 불러오는데 실패했습니다:", error);
+            alert("조직도 데이터를 불러오는데 실패했습니다.");
+        });
+}
+
+/**
+ * 조직도에서 검색하여 해당 노드를 확장하고 하이라이트하는 함수
+ */
+function searchAndExpandTree(keyword) {
+    const lowerKeyword = keyword.toLowerCase();
+    let found = false;
+    const tree = $.ui.fancytree.getTree("#orgTree");
+
+    tree.visit(function(node) {
+        // 직원 노드인지 확인 (폴더가 아닌 노드)
+        if (!node.folder) {
+            const name = node.title.toLowerCase();
+            const dept = (node.data.departmentName || "").toLowerCase();
+            const team = (node.data.teamName || "").toLowerCase();
+            if (name.includes(lowerKeyword) || dept.includes(lowerKeyword) || team.includes(lowerKeyword)) {
+                found = true;
+                // 부모 노드를 모두 확장하여 해당 노드가 보이도록 함
+                node.visitParents(function(parent) {
+                    parent.setExpanded(true);
+                });
+                // 하이라이트 처리 (노드의 span 엘리먼트를 찾아 배경색 변경)
+                $(node.span).css("background", "#ffff99");
+                // 해당 노드로 스크롤 이동
+                node.makeVisible();
+            }
+        }
+    });
+
+    if (!found) {
+        alert("검색 결과가 없습니다.");
+    }
+}
+
+/**
+ * 조직도 모달에서 선택한 직원들을 결재라인으로 등록하는 함수
+ */
+function saveApprovalLineFromOrg() {
+    console.log("saveApprovalLineFromOrg 호출됨");
+    let tree = $.ui.fancytree.getTree("#orgTree");
+    let selectedNodes = tree.getSelectedNodes();
+    let approverList = [];
+    selectedNodes.forEach(function(node) {
+        if (!node.folder && node.data && node.data.empId) {
+            approverList.push({
+                draftId: null,
+                approverId: node.data.empId,
+                aprSeq: approverList.length + 1,
+                approverName: node.title,
+                departmentName: node.data.departmentName,
+                rankName: node.data.rankName
+            });
+        }
+    });
+    console.log("추가할 결재 후보 데이터:", approverList);
+    if (approverList.length === 0) {
+        alert("결재 후보로 추가할 직원을 선택하세요.");
+        return;
+    }
+    // 오류 발생 원인 해결: fillApproverTable 함수가 정의되어 있지 않아 호출 시 에러가 발생함.
+    fillApproverTable(approverList);
+    var modalEl = document.getElementById("orgModal");
+    var modal = bootstrap.Modal.getInstance(modalEl);
+    modal.hide();
+}
+
+/* ================================
+   추가: 결재 후보 데이터를 Approver 테이블에 채우는 함수 (수정된 부분)
+   ================================ */
+   function fillApproverTable(approverList) {
+       const tableBody = document.getElementById("approverTableBody");
+       if (!tableBody) {
+           console.error("approverTableBody 엘리먼트를 찾을 수 없습니다.");
+           return;
+       }
+       // 기존 행을 모두 삭제
+       tableBody.innerHTML = '';
+
+       // approverList 배열의 각 항목을 테이블 행으로 추가
+       approverList.forEach(function(approver, index) {
+           const row = document.createElement('tr');
+           row.classList.add("approverRow");
+
+           // departmentName, rankName 필드를 추가
+           row.innerHTML = `
+               <td>
+                   <input type="hidden" class="approverId" value="${approver.approverId}" />
+                   <input type="text" class="form-control approverName" value="${approver.approverName}" placeholder="승인자명" />
+               </td>
+               <td>
+                   <!-- 부서명 표시 (수정 가능 여부에 따라 input/text 태그 선택) -->
+                   <input type="text" class="form-control departmentName" value="${approver.departmentName || ''}" placeholder="부서명" />
+               </td>
+               <td>
+                   <!-- 직급명 표시 -->
+                   <input type="text" class="form-control rankName" value="${approver.rankName || ''}" placeholder="직급명" />
+               </td>
+               <td>
+                   <input type="number" class="form-control aprSeq" value="${approver.aprSeq}" readonly />
+               </td>
+               <td>
+                   <select class="form-control aprStatus" disabled>
+                       <option value="대기" selected>대기</option>
+                   </select>
+                   <input type="hidden" class="aprStatusHidden" value="대기" />
+               </td>
+           `;
+           tableBody.appendChild(row);
+       });
+   }
+
+
+/* ================================
+   결재 상신 및 기타 함수
+   ================================ */
+
+async function submitApprovalForm() {
+    const formElement = document.querySelector("#approvalFormContainer form");
+    if (!formElement) {
+        alert("제출할 양식을 찾을 수 없습니다.");
+        return;
+    }
+    let draftContentValue = document.querySelector("#draftContent").value;
+    if(draftContentValue.trim() === ""){
+        draftContentValue = "기안상신합니다.";
+    }
+    let draftData = {
+        draftId: document.querySelector("#draftId")?.value || null,
+        templateId: document.querySelector("#templateId")?.value || "",
+        empId: document.querySelector("#empId")?.value || "",
+        draftTitle: document.querySelector("input[name='draftTitle']").value,
+        draftContent: draftContentValue,
+        draftUrgent: document.querySelector("#draftUrgent")?.checked ? "Y" : "N",
+        departmentId: document.querySelector("#departmentId")?.value || "",
+        draftapproverList: []
+    };
+    document.querySelectorAll(".approverRow").forEach((row) => {
+        let approver = {
+            aprId: "",
+            approverId: "",
+            aprSeq: row.querySelector(".aprSeq")?.value || "",
+            aprStatus: row.querySelector(".aprStatus")?.value || "대기",
+            aprReason: row.querySelector(".aprReason")?.value || "기본 사유",
+            approverName: row.querySelector(".approverName")?.value || ""
+        };
+        draftData.draftapproverList.push(approver);
+    });
+    const leaveDateValue = document.querySelector("#leaveDate")?.value;
+    const leaveEndDateValue = document.querySelector("#leaveEndDate")?.value;
+    const reasonValue = CKEDITOR.instances.reason ? CKEDITOR.instances.reason.getData() : "";
+    const annualCodeValue = document.querySelector("#annualCode")?.value;
+    if (leaveDateValue || leaveEndDateValue || annualCodeValue) {
+       draftData.annualHistory = {
+           leaveDate: leaveDateValue,
+           leaveEndDate: leaveEndDateValue,
+           reason: reasonValue,
+           annualCode: annualCodeValue
+       };
+    }
+    console.log("전송할 데이터:", JSON.stringify(draftData, null, 2));
+    axios.post("/approval/draft/submit", draftData)
+        .then(resp => {
+            alert("결재 상신 완료!");
+            location.reload();
+        })
+        .catch(error => {
+            console.error("결재 상신 실패:", error.response ? error.response.data : error);
+            alert("결재 등록에 실패했습니다. 서버 로그를 확인하세요.");
+        });
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+    document.querySelector("#submitApprovalBtn").addEventListener("click", submitApprovalForm);
+    if (CKEDITOR.instances.draftContent) {
+        CKEDITOR.instances.draftContent.destroy(true);
+    }
+    document.getElementById("draftContent").style.display = "none";
+});
+$('#approvalFormModal').on('shown.bs.modal', function () {
+    document.getElementById("draftContent").style.display = "none";
+});
+$(document).on('click', '#plus1', function() {
+    const $tableBody = $('#approverTableBody');
+    if (!$tableBody.length) return;
+    let maxSeq = 0;
+    $tableBody.find('tr').each(function() {
+        const seqVal = parseInt($(this).find('.aprSeq').val(), 10) || 0;
+        if (seqVal > maxSeq) {
+            maxSeq = seqVal;
+        }
+    });
+    const nextSeq = maxSeq + 1;
+    const newRow = `
+    <tr class="approverRow">
+      <td>
+        <input type="hidden" class="approverId" value="" />
+        <input type="text" class="form-control approverName" placeholder="승인자명" />
+      </td>
+      <td>
+        <input type="number" class="form-control aprSeq" value="${nextSeq}" readonly />
+      </td>
+      <td>
+        <select class="form-control aprStatus" disabled>
+          <option value="대기" selected>대기</option>
+        </select>
+        <input type="hidden" class="aprStatusHidden" value="대기" />
+      </td>
+    </tr>
+    `;
+    $tableBody.append(newRow);
+});
+$(document).on('click', '#minus1', function() {
+    const $tableBody = $('#approverTableBody');
+    if ($tableBody.find('tr').length > 0) {
+        $tableBody.find('tr').last().remove();
+    }
+});
+$(document).on('click', '.remove-row', function() {
+    $(this).closest('tr').remove();
+});

@@ -1,0 +1,14 @@
+package kr.or.ddit.position.vo;
+
+import java.io.Serializable;
+
+import lombok.Data;
+
+@Data
+public class PositionVO implements Serializable{
+	
+	private Long positionId;
+	private String positionName;
+	private String positionStatus;
+	
+}

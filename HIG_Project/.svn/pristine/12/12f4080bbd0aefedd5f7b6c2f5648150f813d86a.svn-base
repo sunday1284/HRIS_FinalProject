@@ -1,0 +1,98 @@
+/**
+ * chartStatusCount.js
+ *
+ * - 로그인 사용자 기준으로 /approval/approver/statusCount 호출
+ * - 반환된 [ {APRSTATUS, CNT}, ... ] 데이터를 Chart.js로 시각화
+ * - 막대 클릭 시 localStorage에 상태 저장 → /approval/myDraftsView 로 이동 (옵션)
+ */
+
+document.addEventListener("DOMContentLoaded", async function() {
+  try {
+    // 1) 서버에서 현재 로그인 사용자(empId)에 대한 대기/승인/반려 건수 조회
+    //    Controller에서 AuthUtil.getLoggedInUserId() 사용 → 사용자별 데이터 반환
+    const response = await fetch("/approval/approver/statusCount");
+    if (!response.ok) {
+      throw new Error("서버 응답 에러: " + response.status);
+    }
+
+    // 2) 예시 응답: 
+    // [ { "APRSTATUS": "대기", "CNT": 10 }, { "APRSTATUS": "승인", "CNT": 3 }, { "APRSTATUS": "반려", "CNT": 2 } ]
+    const data = await response.json();
+
+    // 3) Chart.js 용 라벨/데이터
+    //    MyBatis 기본 맵핑시, 실제 JSON 키는 대문자("APRSTATUS", "CNT")일 수 있으니 주의
+    const labels = data.map(item => item.APRSTATUS);
+    const counts = data.map(item => item.CNT);
+
+    // 4) <canvas id="statusChart"> 요소 찾기
+    const canvas = document.getElementById("statusChart");
+    if (!canvas) {
+      console.warn("차트를 표시할 canvas 요소(#statusChart)가 없습니다.");
+      return;
+    }
+    const ctx = canvas.getContext("2d");
+
+    // 5) (옵션) chartjs-plugin-datalabels 등록
+    //    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+    Chart.register(ChartDataLabels);
+
+    // 6) 차트 라벨("승인", "대기", "반려") → 문서 리스트 select 값("완료", "대기", "반려") 매핑
+    //    예: "승인" → "완료"
+    const statusMap = {
+      "대기": "대기",
+      "승인": "완료",
+      "반려": "반려"
+    };
+
+    // 7) Chart.js로 막대 차트 생성
+    new Chart(ctx, {
+      type: "bar",
+      data: {
+        labels: labels,
+        datasets: [{
+          label: "결재 상태별 건수",
+          data: counts,
+          backgroundColor: ["#f9c66a", "#7de192", "#fa9a9a"] // 예시 색상
+        }]
+      },
+      options: {
+        responsive: true,
+        // (옵션) 막대를 클릭하면 해당 상태만 문서 목록에서 보이도록 localStorage에 저장 후 페이지 이동
+        onClick: (evt, elements) => {
+          if (!elements.length) return;
+          const idx = elements[0].index;
+          const clickedLabel = labels[idx]; // "대기", "승인", "반려" 등
+          const mappedStatus = statusMap[clickedLabel] || "all";
+
+          // localStorage에 상태 저장 (문서 페이지에서 이 값 읽어 select에 설정)
+          localStorage.setItem("draftStatusFilterValue", mappedStatus);
+
+          // 문서 목록 페이지로 이동 (URL 파라미터 없이)
+          window.location.href = "/approval/mydrafts";
+        },
+        plugins: {
+          legend: { display: false },
+          title: {
+            display: true,
+            text: "내 문서 상태별 통계 (대기/승인/반려)"
+          },
+          datalabels: {
+            anchor: "end",
+            align: "top",
+            color: "#333",
+            font: { weight: "bold" },
+            formatter: (val) => val // 막대 위에 숫자 표시
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true
+          }
+        }
+      }
+    });
+
+  } catch (err) {
+    console.error("차트 데이터 로드 실패:", err);
+  }
+});

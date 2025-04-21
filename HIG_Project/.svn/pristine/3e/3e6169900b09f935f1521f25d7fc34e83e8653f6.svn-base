@@ -1,0 +1,20 @@
+package kr.or.ddit.salary.vo;
+
+import java.io.Serializable;
+
+import lombok.Data;
+import lombok.ToString;
+@ToString
+@Data
+public class DeductionVO implements Serializable{
+
+	private Long deductionId; // 공제 내역 ID
+	private Long deductionCode; // 공제코드(FK)
+	private String empId; // 직원 정보를 저장하는 테이블
+	private Long deductionAmount; // 공제금액
+	private String createAt; // 공제 내역 생성일
+	private Long salaryId; // 급여지급 ID 고유식별자
+	
+	private DeductionCodeVO deductionCodeVO;
+	
+}

@@ -1,0 +1,46 @@
+package kr.or.ddit.evaluation.controller;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+
+import kr.or.ddit.evaluation.service.EvaluationService;
+import kr.or.ddit.evaluation.vo.EvaluationTypeVO;
+import kr.or.ddit.evaluation.vo.EvaluationWrapperVO;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+@Controller
+@RequestMapping("/evaluation")
+@RequiredArgsConstructor
+public class EvaluationKPIReadController {
+	
+	private final EvaluationService service;
+	
+	@GetMapping("KPIList")
+	public String EvaluationKPI(
+			Model model) {
+		
+		 List<EvaluationTypeVO> evaluationList = service.evaluationRank(); 
+	     model.addAttribute("evaluationList", evaluationList);
+		
+		return "tiles:evaluation/KPIList";
+	}
+	
+	
+	@PostMapping("/evaluation/saveEvaluation")
+	public String saveEvaluation(
+			@ModelAttribute EvaluationWrapperVO wrapperVO
+			) {
+	    service.saveEvaluationList(wrapperVO.getEvaluationList());
+	    return "redirect:/evaluation/KPIList";
+	}
+	
+}

@@ -1,0 +1,109 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+    pageEncoding="UTF-8"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn" %>  
+
+<title>직급별 평가 기준</title>
+<html>
+
+<head>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 8px;
+            border: 1px solid #ddd;
+        }
+        th {
+            background-color: #f2f2f2;
+            text-align: center; 
+        }
+        body {
+	        font-family: Arial, sans-serif;
+	        margin: 0; /* 바디 여백 제거 */
+	        display: flex;
+	        justify-content: center; /* 가운데 정렬 */
+	        align-items: center;
+	        min-height: 100vh; /* 화면 높이를 꽉 채움 */
+	    }
+        .container {
+	        display: grid;
+	        gap: 20px;
+	        width: 90vw; /* 전체 너비 활용 */
+	        max-width: 1500px; /* 너무 넓어지지 않도록 제한 */
+	        background: white;
+	        padding: 20px;
+	        border-radius: 8px;
+	        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+	    }
+        td{
+/*         	text-align: left; */
+        }
+        
+        h2{
+        	margin-bottom : 40px;
+        }
+        
+        .form-section {
+            padding: 20px;
+            border: 1px solid #ddd; /* 테두리 설정 */
+            border-radius: 8px;
+            background-color: #ffffff; /* 배경 흰색 */
+        }
+        
+        th:nth-child(1), td:nth-child(1) { width: 15%; text-align: center; } /* 평가명 */
+        th:nth-child(2), td:nth-child(2) { width: 15%; text-align: center; } /* 유형 */
+        th:nth-child(3), td:nth-child(3) { width: 15%; text-align: center; } /* 항목 */
+        th:nth-child(4), td:nth-child(4) { width: 10%; text-align: center; } /* 가중치 */
+        th:nth-child(5), td:nth-child(5) { width: 45%; } /* 설명 */
+        
+    </style>
+</head>
+<body>
+<h2>직급별 평가 기준</h2>
+<div class="container">
+<!-- 이미 출력한 rankName을 저장할 Set 역할을 하는 변수 -->
+<div class="form-section">
+<c:set var="printedRanks" value="," />
+
+<c:forEach var="x" items="${evaluationList}">
+    <!-- 현재 rankName이 printedRanks에 포함되어 있는지 확인 -->
+    <c:if test="${not fn:contains(printedRanks, x.rank.rankName)}">
+        <!-- 중복 방지를 위해 printedRanks 변수에 추가 -->
+        <c:set var="printedRanks" value="${printedRanks},${x.rank.rankName}," />
+        
+        <h3>${x.rank.rankName}</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>평 가 명</th>
+                    <th>유 형</th>
+                    <th>항 목</th>
+                    <th>가 중 치</th>
+                    <th>상  세  내  용</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- 동일한 rankName을 가진 평가 항목을 출력 -->
+                <c:forEach var="evaluation" items="${evaluationList}">
+                    <c:if test="${evaluation.rank.rankName eq x.rank.rankName}">
+                        <tr>
+                            <td>${evaluation.evaluaName}</td>
+                            <td>${evaluation.evaluaType}</td>
+                            <td>${evaluation.evaluaCriteria}</td> 
+                            <td>${evaluation.evaluaWeight}</td>
+                            <td>&nbsp;${evaluation.evaluaComment}</td>
+                        </tr>
+                    </c:if>
+                </c:forEach>
+            </tbody>
+        </table>
+        <br/>
+    </c:if>
+</c:forEach>
+</div>
+</div>
+</body>
+</html>

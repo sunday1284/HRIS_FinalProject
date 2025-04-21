@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper
+	namespace="kr.or.ddit.mybatis.mappers.evaluation.EvaluationMapper">
+	
+	<select id="selectEvaluationByRank" resultType="EvaluationTypeVO">
+		SELECT *
+	    FROM EVALUATION_TYPE
+	    WHERE RANK_ID = '3000'  <!-- 예시: 나중에 동적 파라미터로 대체 가능 -->
+	</select>
+	
+	<insert id="insertEvaluation" parameterType="EvaluationVO">
+		INSERT INTO EVALUATION (
+			EVALUATION_ID
+			,EMP_ID
+			,EVALUATYPE_ID
+			,EVALUATION_DATE
+			,EVALUATION_SCORE
+			,EVALUATION_COMMENTS
+			,EVALUATION_FINAL_COMMENTS
+			,EVALUATOR_EMP_ID
+			,EVALUATION_YEAR
+			,HALF_YEAR
+			,EVALUATION_TOTAL_SCORE
+		) VALUES (
+			#{evaluationId}
+			, #{empId}
+			, #{evaluatypeId}
+			, #{evaluationDate}
+			, #{evaluationScore}
+			, #{evaluationComments}
+			, #{evaluationFinal}
+			, #{evaluatorEmpId}
+			, #{evaluationYear}
+			, #{halfYear}
+		)
+	</insert>
+
+</mapper>

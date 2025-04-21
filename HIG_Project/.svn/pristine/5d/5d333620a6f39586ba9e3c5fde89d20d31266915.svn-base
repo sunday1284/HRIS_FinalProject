@@ -1,0 +1,113 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+	pageEncoding="UTF-8"%>
+<%@taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt"%>
+
+<script src="${pageContext.request.contextPath}/resources/js/employee/empDetail.js"></script>
+<div class="page-heading">
+		<div class="page-title">
+			<div class="row">
+				<div class="col-12 col-md-6 order-md-1 order-last">
+					<h3>직원정보 리스트</h3>
+				</div>
+
+				<div class="col-12 col-md-6 order-md-2 order-first">
+					<nav aria-label="breadcrumb"
+						class="breadcrumb-header float-start float-lg-end">
+
+					</nav>
+				</div>
+			</div>
+		</div>
+
+		<section class="section">
+			<div class="card">
+
+
+				<div class="card-body">
+					<div class="dataTable-wrapper dataTable-loading no-footer sortable searchable fixed-columns">
+                    	<div class="dataTable-container">
+
+
+<table class="table table-striped" id="table1">
+	<thead>
+		<tr>
+			<th data-sortable=""><a href="#" class="dataTable-sorter">이름</a></th>
+			<th data-sortable=""><a href="#" class="dataTable-sorter">휴대폰</a></th>
+			<th data-sortable=""><a href="#" class="dataTable-sorter">이메일</a></th>
+			<th data-sortable=""><a href="#" class="dataTable-sorter">부서명</a></th>
+			<th data-sortable=""><a href="#" class="dataTable-sorter">팀명</a></th>
+			<th data-sortable=""><a href="#" class="dataTable-sorter">직급</a></th>
+			<th data-sortable=""><a href="#" class="dataTable-sorter">직책</a></th>
+			<th data-sortable=""><a href="#" class="dataTable-sorter">직무</a></th>
+			<th data-sortable=""><a href="#" class="dataTable-sorter">입사일자</a></th>
+			<th data-sortable=""><a href="#" class="dataTable-sorter">상세정보</a></th>
+			<th data-sortable=""><a href="#" class="dataTable-sorter">인사기록카드</a></th>
+		</tr>
+	</thead>
+	<tbody>
+
+		<c:forEach items="${empList}" var="x">
+			<tr>
+				<td>${x.name }</td>
+				<td>${x.phoneNumber }</td>
+				<td>${x.email }</td>
+				<td>${x.department.departmentName }</td>
+				<td>${x.team.teamName }</td>
+				<td>${x.rank.rankName }</td>
+				<td>${x.job.jobName }</td>
+				<td>${x.position.positionName }</td>
+				<td>
+				    <fmt:parseDate value="${x.hireDate}" pattern="yyyy-MM-dd HH:mm:ss" var="parsedHireDate" />
+					<fmt:formatDate value="${parsedHireDate}" pattern="yyyy-MM-dd" />
+				</td>
+				<td>
+					<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal1"  data-emp-id="${x.empId}">선택</button>
+				</td>
+				<td>
+					<c:url value="/employee/empDetail" var="empDetailUrl">
+						<c:param name="empWho" value="${x.empId }"/>
+					</c:url>
+					<a href="${empDetailUrl }">열람</a>
+				</td>
+			<tr />
+		</c:forEach>
+	</tbody>
+</table>
+<br>
+<br>
+<div style="position: absolute; right: 30px; bottom: 25px; margin-top: 20px;">
+	<form action="${pageContext.request.contextPath}/employee/empFormUI" method="get">
+			<input class="btn btn-primary" type="submit" value="신규직원등록">
+	</form>
+</div>
+
+
+<!-- Modal -->
+<div class="modal fade" id="exampleModal1" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="exampleModalLabel">상세보기</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body"></div>
+      <div class="modal-footer">
+<!--         <button type="button" class="btn btn-warning" id="editButton" data-mode="edit">수정</button> -->
+<!--         <button type="button" class="btn btn-success" id="saveButton" style="display: none;">저장</button> -->
+        <button type="button" class="btn btn-secondary" id="closeButton" data-bs-dismiss="modal">닫기</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+
+
+			</div>
+		</div>
+	</section>
+</div>
+
+

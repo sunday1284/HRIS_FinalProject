@@ -1,0 +1,165 @@
+<!-- 
+ * == 개정이력(Modification Information) ==
+ *   
+ *   수정일      			수정자           수정내용
+ *  ============   	============== =======================
+ *  2025. 3. 12.     	LJW            최초 생성
+ *
+-->
+
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+	pageEncoding="UTF-8"%>
+<%@taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@taglib uri="http://java.sun.com/jsp/jstl/fmt" prefix="fmt"%>
+
+<style>
+	tr,th,td {
+		text-align: center;
+	}
+</style>
+
+
+<div class="page-heading">
+		<div class="page-title">
+			<div class="row">
+				<div class="col-12 col-md-6 order-md-1 order-last">
+					<h3>인사발령 리스트</h3>
+				</div>
+				<div class="col-12 col-md-6 order-md-2 order-first">
+					<nav aria-label="breadcrumb" class="breadcrumb-header float-start float-lg-end">
+						<ol class="breadcrumb">
+							<li class="breadcrumb-item"><a href="index.html">메인으로</a></li>
+							<li class="breadcrumb-item active" aria-current="page"></li>
+						</ol>
+					</nav>
+				</div>
+			</div>
+		</div>
+		<section class="section">
+			<div class="card">
+				<form
+					action="${pageContext.request.contextPath}/employee/appointFormUI"
+					method="get">
+					<div class="card-header">
+						<input class="btn btn-primary" type="submit" value="인사발령등록">
+					</div>
+				</form>
+				<div class="card-body">
+<table class="table-bordered" id="table1">
+	<thead>
+		<tr>
+			<th colspan="1">발령호수</th>
+			<th colspan="2" data-sortable=""><a href="#" class="dataTable-sorter">직원정보</a></th>
+			<th colspan="5" data-sortable=""><a href="#" class="dataTable-sorter">이전</a></th>
+			<th colspan="8" data-sortable=""><a href="#" class="dataTable-sorter">발령정보</a></th>
+		</tr>
+		<tr>
+			<th data-sortable=""><a href="#" class="dataTable-sorter">발령호수</a></th>
+			<th data-sortable=""><a href="#" class="dataTable-sorter">사번</a></th>
+			<th data-sortable=""><a href="#" class="dataTable-sorter">이름</a></th>
+			<th data-sortable=""><a href="#" class="dataTable-sorter">부서</a></th>
+			<th data-sortable=""><a href="#" class="dataTable-sorter">팀</a></th>
+			<th data-sortable=""><a href="#" class="dataTable-sorter">직급</a></th>
+			<th data-sortable=""><a href="#" class="dataTable-sorter">직책</a></th>
+			<th data-sortable=""><a href="#" class="dataTable-sorter">직무</a></th>
+			<th data-sortable=""><a href="#" class="dataTable-sorter">발령일자</a></th>
+			<th data-sortable=""><a href="#" class="dataTable-sorter">발령구분</a></th>
+			<th data-sortable=""><a href="#" class="dataTable-sorter">발령사유</a></th>
+			<th data-sortable=""><a href="#" class="dataTable-sorter">발령 부서</a></th>
+			<th data-sortable=""><a href="#" class="dataTable-sorter">발령 팀</a></th>
+			<th data-sortable=""><a href="#" class="dataTable-sorter">발령 직급</a></th>
+			<th data-sortable=""><a href="#" class="dataTable-sorter">발령 직책</a></th>
+			<th data-sortable=""><a href="#" class="dataTable-sorter">발령 직무</a></th>
+		</tr> 
+	</thead>  
+	<tbody>
+		<c:if test="${not empty appointList }">
+			<c:forEach items="${appointList}" var="x">
+				<tr>
+					<td><c:url value="/employee/appointDetail" var="appDetailUrl">
+							<c:param name="appwho" value="${x.appId}" />
+						</c:url> <a href="${appDetailUrl }">${x.appId }</a></td>
+					<td>${x.empId}</td>
+					<td>${x.employee.name}</td>
+					<td>
+					  <span>${x.prevDepartmentName}</span><br>
+					  <small class="text-muted">(${x.prevDepartmentId})</small>
+					</td>
+					<td>
+					  <span>${x.prevTeamName}</span><br>
+					  <small class="text-muted">(${x.prevTeamId})</small>
+					</td>
+					<td>
+					  <span>${x.prevRankName}</span><br>
+					  <small class="text-muted">(${x.prevRankId})</small>
+					</td>
+					<td>
+					  <span>${x.prevJobName}</span><br>
+					  <small class="text-muted">(${x.prevJobId})</small>
+					</td>
+					<td>
+					  <span>${x.prevPositionName}</span><br>
+					  <small class="text-muted">(${x.prevPositionId})</small>
+					</td>
+					<td>
+					  <fmt:parseDate value="${x.appDate}" pattern="yyyy-MM-dd HH:mm:ss" var="parsedHireDate" />
+					  <fmt:formatDate value="${parsedHireDate}" pattern="yyyy-MM-dd" />
+					</td>
+					<td>${x.appType}</td>
+					<td>${x.appReason}</td>
+					<td>
+					  <span>${x.newDepartmentName}</span><br>
+					  <small class="text-muted">(${x.newDepartmentId})</small>
+					</td>
+					<td>
+					  <span>${x.newTeamName}</span><br>
+					  <small class="text-muted">(${x.newTeamId})</small>
+					</td>
+					<td>
+					  <span>${x.newRankName}</span><br>
+					  <small class="text-muted">(${x.newRankId})</small>
+					</td>
+					<td>
+					  <span>${x.newJobName}</span><br>
+					  <small class="text-muted">(${x.newJobId})</small>
+					</td>
+					<td>
+					  <span>${x.newPositionName}</span><br>
+					  <small class="text-muted">(${x.newPositionId})</small>
+					</td>
+					
+					
+					
+<%-- 					<td>${x.prevDepartmentName}</td> --%>
+<%-- 					<td>${x.prevTeamName}</td> --%>
+<%-- 					<td>${x.prevRankName}</td> --%>
+<%-- 					<td>${x.prevJobName}</td> --%>
+<%-- 					<td>${x.prevPositionName}</td> --%>
+<!-- 					<td> -->
+<%-- 						<fmt:parseDate value="${x.appDate}" pattern="yyyy-MM-dd HH:mm:ss" var="parsedHireDate" /> --%>
+<%-- 						<fmt:formatDate value="${parsedHireDate}" pattern="yyyy-MM-dd" /> --%>
+<!-- 					</td> -->
+<%-- 					<td>${x.appType}</td> --%>
+<%-- 					<td>${x.appReason}</td> --%>
+<%-- 					<td>${x.newPositionName}</td> --%>
+<%-- 					<td>${x.newRankName}</td> --%>
+<%-- 					<td>${x.newDepartmentName}</td> --%>
+<%-- 					<td>${x.newJobName}</td> --%>
+<%-- 					<td>${x.newTeamName}</td> --%>
+				</tr>
+			</c:forEach>
+		</c:if>
+	</tbody>
+	
+	</table>
+					<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+					  <div class="modal-dialog">
+					    <div class="modal-content">
+					    </div>
+					  </div>
+					</div>
+					
+			</div>
+		</div>
+	</section>
+</div>

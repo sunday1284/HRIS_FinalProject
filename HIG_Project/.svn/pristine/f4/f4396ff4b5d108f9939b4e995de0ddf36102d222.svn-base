@@ -1,0 +1,149 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ taglib uri="http://www.springframework.org/tags/form" prefix="form" %>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>결재 양식 수정</title>
+</head>
+<body>
+    <h4>결재 양식 수정</h4>
+    <form action="${pageContext.request.contextPath}/approval/approvalUpdate" 
+          method="post" enctype="multipart/form-data">
+    
+        <!-- 기존 데이터를 삭제 후 새로운 데이터 추가 -->
+        <input type="hidden" name="templateId" value="${templateVO.templateId}">
+        
+        <div class="row mb-3">
+            <label for="templateTite" class="col-sm-2 col-form-label">양식 제목</label>
+            <div class="col-sm-10">
+                <input type="text" class="form-control" name="templateTite"
+                    id="templateTite" value="${templateVO.templateTite}">
+                <form:errors path="templateTite" class="text-danger" element="span" />
+            </div>
+        </div>
+
+        <!-- 양식 내용 textarea -->
+        <div class="row mb-3">
+            <label for="templateContent" class="col-sm-2 col-form-label">양식 내용</label>
+            <div class="col-sm-10">
+                <textarea class="form-control" name="templateContent"
+                          id="contentEditor" rows="10">${templateVO.templateContent}</textarea>
+                <form:errors path="templateContent" class="text-danger" element="span"/>
+            </div>
+        </div>
+
+        <!-- 양식 카테고리 -->
+        <div class="row mb-3">
+            <label for="templateCategory" class="col-sm-2 col-form-label">양식 카테고리</label>
+            <div class="col-sm-10">
+                <select name="templateCategory" class="form-control">
+                    <option value="">카테고리 선택</option>
+                    <c:forEach var="category" items="${categoryList}">
+                        <option value="${category}" ${category eq templateVO.templateCategory ? 'selected' : ''}>
+                            ${category}
+                        </option>
+                    </c:forEach>
+                </select>
+                <form:errors path="templateCategory" class="text-danger" element="span" />
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <label for="templateDeleted" class="col-sm-2 col-form-label">양식 삭제 여부 (Y,N)</label>
+            <div class="col-sm-10">
+                <input type="text" class="form-control" name="temlpateDeleted"
+                    id="templateDeleted" value="${templateVO.temlpateDeleted}">
+                <form:errors path="templateDeleted" class="text-danger" element="span" />      
+            </div>
+        </div>
+
+        <!-- 기존 파일 표시 및 다운로드, 물리 삭제 버튼 -->
+        <c:if test="${not empty templateVO.fileDetails}">
+            <div class="row mb-3">
+                <label class="col-sm-2 col-form-label">첨부 파일</label>
+                <div class="col-sm-10">
+                    <c:forEach var="file" items="${templateVO.fileDetails}">
+                        <div style="margin-bottom: 10px;">
+                            <a href="${pageContext.request.contextPath}/file/download/${file.detailId}">
+                                ${file.fileName}
+                            </a>
+                            <!-- 파일 물리 삭제 버튼 (X 아이콘) -->
+                            <button type="button" class="btn btn-danger btn-sm me-3"
+                                    onclick="deleteFilePhysically('${file.detailId}', '${file.fileSavename}')"
+                                    title="파일 삭제">
+                                X
+                            </button>
+                            <input type="hidden" name="existingFileIds" value="${file.detailId}">
+                        </div>
+                    </c:forEach>
+                </div>
+            </div>
+        </c:if>
+
+        <!-- 파일 업로드 -->
+        <div class="row mb-3">
+            <label for="files" class="col-sm-2 col-form-label">파일 업로드</label>
+            <div class="col-sm-10">
+                <input type="file" class="form-control" name="files" id="files" multiple ${empty templateVO.fileDetails ? "required" : ""}>
+                <small class="text-muted">
+                    <c:choose>
+                        <c:when test="${empty templateVO.fileDetails}">
+                            파일을 반드시 업로드해야 합니다.
+                        </c:when>
+                        <c:otherwise>
+                            파일을 선택하지 않으면 기존 파일이 유지됩니다.
+                        </c:otherwise>
+                    </c:choose>
+                </small>
+            </div>
+        </div>
+        <div>
+            <button type="submit" class="btn btn-primary">수정</button>
+            <a class="btn btn-secondary btn-spacing" href="${pageContext.request.contextPath}/approval/list">
+                양식 목록
+            </a>
+        </div>
+    </form>
+</body>
+<script type="text/javascript">
+document.addEventListener('DOMContentLoaded', function(){
+    CKEDITOR.replace('contentEditor', {
+        versionCheck: false
+    });
+    
+    /**
+     * 물리 파일 삭제 요청 함수
+     * @param {string} detailId - FILE_DETAIL 테이블의 DETAIL_ID
+     * @param {string} fileSavename - 실제 저장된 파일명 (UUID 포함)
+     */
+    function deleteFilePhysically(detailId, fileSavename) {
+        if (!confirm('" 파일을 삭제하시겠습니까? \n(복구 불가)')) {
+            return;
+        }
+        
+        // AJAX를 이용하여 서버에 물리 삭제 요청 (DELETE)
+        fetch(window.contextPath + "/file/physical/" + detailId, {
+            method: "DELETE"
+        })
+        .then(function(response) {
+            if (!response.ok) {
+                throw new Error("파일 삭제 실패 (server error)");
+            }
+            return response.text(); // 성공 시 서버 메시지 반환
+        })
+        .then(function(msg) {
+            alert(msg);
+            // 삭제 후 페이지 리로드 또는 파일 목록에서 해당 파일 제거
+            location.reload();
+        })
+        .catch(function(err) {
+            console.error("파일 물리 삭제 실패:", err);
+            alert("파일 삭제 중 오류 발생: " + err);
+        });
+    }
+    
+    // 전역에 노출 (다른 스크립트에서 호출할 수 있도록)
+    window.deleteFilePhysically = deleteFilePhysically;
+});
+</script>

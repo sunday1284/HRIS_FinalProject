@@ -1,0 +1,47 @@
+package kr.or.ddit.evaluation.controller;
+
+import java.util.List;
+
+import javax.servlet.http.HttpSession;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+
+import kr.or.ddit.evaluation.service.EvaluationService;
+import kr.or.ddit.evaluation.vo.EvaluationCandidateVO;
+import kr.or.ddit.evaluation.vo.EvaluationWrapperVO;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
+@Controller
+@RequestMapping("/evaluation")
+@RequiredArgsConstructor
+public class EvaluationKPIListController {
+
+    private final EvaluationService service;
+    
+    // 피평가자 리스트 조회
+    @GetMapping("/KPIList")
+    public String getEvaluationCandidates(
+    		Model model, 
+    		HttpSession session) {
+    	
+        String evaluatorId = (String) session.getAttribute("empId"); // 로그인 ID 기준
+
+        List<EvaluationCandidateVO> candidateList = service.getEvaluationTargets(evaluatorId);
+        model.addAttribute("candidateList", candidateList);
+
+        return "tiles:evaluation/KPIList";
+    }
+    // 평가 저장
+    @PostMapping("/saveEvaluation")
+    public String saveEvaluation(@ModelAttribute EvaluationWrapperVO wrapperVO) {
+        service.saveEvaluationList(wrapperVO.getEvaluationList());
+        return "redirect:/evaluation/KPIList";
+    }
+}
