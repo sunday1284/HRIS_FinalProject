@@ -53,7 +53,7 @@ import lombok.extern.slf4j.Slf4j;
 public class ApprovalProcessServiceImpl implements ApprovalProcessService {
 	// 연차 사용 내역 업데이트 및 근태기록 인서트 
 	@Inject
-	private AnnualMapper Amapper;
+	private AnnualMapper anmapper;
 	@Inject
 	private attendanceMapper amapper;
 	
@@ -310,7 +310,7 @@ public class ApprovalProcessServiceImpl implements ApprovalProcessService {
                     usedAnnual = 1.0 * days;
                 }
                 // 연차 차감 처리 (실제 사용일수 반영)
-                Amapper.updateAnnual(approverVO.getDraftEmpId(), usedAnnual);
+                anmapper.updateAnnual(approverVO.getDraftEmpId(), usedAnnual);
                 
                 // 최종 승인인 경우, 연차 기록을 "승인"으로 업데이트
                 AnnualHistoryVO finishHistory = new AnnualHistoryVO();
