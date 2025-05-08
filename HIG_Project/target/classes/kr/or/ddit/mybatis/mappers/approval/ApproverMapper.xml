@@ -184,7 +184,6 @@
     
     <!-- 나머지 기존 쿼리들은 그대로 유지 -->
     <!-- 예: getMyApprovalInfo, getMyApprovalInfoDetail, updateApprovalStatus, countPendingApprovals, updateDraftStatus, updateDraftBoxStatus -->
-    
     <select id="getMyApprovalInfo" resultMap="draftApproverMap" parameterType="String">
 	    SELECT
 	        da.draft_id,
