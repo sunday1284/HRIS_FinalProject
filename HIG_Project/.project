@@ -30,7 +30,11 @@
 	</natures>
 	<filteredResources>
 		<filter>
+<<<<<<< HEAD
+			<id>1745366516404</id>
+=======
 			<id>1745296745477</id>
+>>>>>>> branch 'main' of https://github.com/sunday1284/HRIS_FinalProject.git
 			<name></name>
 			<type>30</type>
 			<matcher>
