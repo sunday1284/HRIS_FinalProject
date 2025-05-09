@@ -5,6 +5,42 @@
 | 전자결재 View      | `/src/main/webapp/WEB-INF/views/approval/`      | **🖥 JSP 화면 구성**             |
 | 공통파일 Back‑End  | `/src/main/java/kr/or/ddit/file/`               | **📂 공통파일 관리 로직**            |
 
+HIG_Project
+└─ src
+   └─ main
+       ├─ java
+       │   └─ kr.or.ddit
+       │       ├─ **approval**               # 전자결재 Back‑End
+       │       │   ├─ common                 # 상수‧예외‧유틸
+       │       │   ├─ controller             # ApprovalController.java …
+       │       │   ├─ service                # ApprovalService / Impl
+       │       │   └─ vo                     # ApprovalVO / ApproverVO …
+       │       └─ **file**                   # 공통파일 관리 Back‑End
+       │           ├─ controller             # FileController.java
+       │           ├─ service                # FileService / Impl
+       │           └─ vo                     # FileVO, FileInfoVO …
+       │
+       ├─ resources
+       │   └─ mybatis
+       │       └─ mappers
+       │           ├─ approval               # ↑ Java 인터페이스와 1:1
+       │           │   ├─ ApprovalMapper.java
+       │           │   ├─ ApprovalProcessMapper.java
+       │           │   └─ ApproverMapper.java
+       │           └─ file
+       │               └─ FileMapper.java
+       │
+       └─ webapp
+           ├─ WEB-INF
+           │   └─ views
+           │       ├─ **approval**           # JSP (작성·결재·상세조회 등)
+           │    
+           └─ resources
+               └─ js
+                   ├─ approval               # 결재 상태 Flow JS
+
+
+
 
 ## 👨‍💻 프로젝트 정보
 - 개발 인원: 7명
