@@ -5,6 +5,7 @@
 | 전자결재 Mapper | `/src/main/resources/mybatis/mappers/approval/` | [**🗄 SQL / Mapper 파일**](./HIG_Project/src/main/resources/kr/or/ddit/mybatis/mappers/approval/) |
 | 전자결재 View | `/src/main/webapp/WEB-INF/views/approval/` | [**🖥 JSP 화면 구성**](./HIG_Project/src/main/webapp/WEB-INF/views/approval/) |
 | 공통파일 Back‑End | `/src/main/java/kr/or/ddit/file/` | [**📂 공통파일 관리 로직**](./HIG_Project/src/main/java/kr/or/ddit/file/) |
+| 공통파일 Mapper | `/src/main/resources/mybatis/mappers/file/` | [**🗄 SQL / Mapper 파일**](./HIG_Project/src/main/resources/kr/or/ddit/mybatis/mappers/file/) |
 
 
 ## 👨‍💻 프로젝트 정보
