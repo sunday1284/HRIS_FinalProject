@@ -10,7 +10,7 @@ tmp/
 *.swp
 *~.nib
 local.properties
-.settings/
+**/.settings/
 .loadpath
 .recommenders
 
@@ -94,7 +94,7 @@ hs_err_pid*
 replay_pid*
 
 ### Maven ###
-target/
+**/target/
 bin/
 pom.xml.tag
 pom.xml.releaseBackup
@@ -109,10 +109,10 @@ buildNumber.properties
 
 # Eclipse m2e generated files
 # Eclipse Core
-.project
+**/.project
 # JDT-specific (Eclipse Java Development Tools)
-.classpath
-
+**/.classpath 
+**/m2e-wtp/web-resources/
 ### Windows ###
 # Windows thumbnail cache files
 Thumbs.db
