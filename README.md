@@ -2,7 +2,7 @@
 | 영역 | GitHub URL (상대 경로) | 클릭 유도 문구 |
 | ---- | -------------------- | -------------- |
 | 전자결재 전체 소스 | `/src/main/java/kr/or/ddit/approval/` | [**🔍 Back‑End – 전자결재 코드 보기**](./HIG_Project/src/main/java/kr/or/ddit/approval/) |
-| 전자결재 Mapper | `/src/main/resources/mybatis/mappers/approval/` | [**🗄 SQL / Mapper 파일**](./HIG_Project/src/main/resources/mybatis/mappers/approval/) |
+| 전자결재 Mapper | `/src/main/resources/mybatis/mappers/approval/` | [**🗄 SQL / Mapper 파일**](./HIG_Project/src/main/resources/kr/or/ddit/mybatis/mappers/approval/) |
 | 전자결재 View | `/src/main/webapp/WEB-INF/views/approval/` | [**🖥 JSP 화면 구성**](./HIG_Project/src/main/webapp/WEB-INF/views/approval/) |
 | 공통파일 Back‑End | `/src/main/java/kr/or/ddit/file/` | [**📂 공통파일 관리 로직**](./HIG_Project/src/main/java/kr/or/ddit/file/) |
 
