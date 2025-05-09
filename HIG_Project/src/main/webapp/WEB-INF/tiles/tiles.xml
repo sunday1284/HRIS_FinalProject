@@ -17,7 +17,6 @@
 	</definition>
 
 	<!--  에러 템플릿 설정 -->
-
 	<definition name="error.error_403" extends="abstractMazerParent">
 	    <put-attribute name="title" value="접근 불가"/>
 	    <put-attribute name="content" value="/WEB-INF/views/error/error-403.jsp"/>
