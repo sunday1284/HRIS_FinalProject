@@ -4,7 +4,6 @@
 | 전자결재 Mapper    | `/src/main/resources/mybatis/mappers/approval/` | **🗄 SQL / Mapper 파일**       |
 | 전자결재 View      | `/src/main/webapp/WEB-INF/views/approval/`      | **🖥 JSP 화면 구성**             |
 | 공통파일 Back‑End  | `/src/main/java/kr/or/ddit/file/`               | **📂 공통파일 관리 로직**            |
-| 공통파일 Front‑End | `/src/main/webapp/resources/js/file/`           | **📦 Drag‑Drop 업로드 JS**      |
 
 
 ## 👨‍💻 프로젝트 정보
