@@ -95,6 +95,7 @@ replay_pid*
 
 ### Maven ###
 target/
+bin/
 pom.xml.tag
 pom.xml.releaseBackup
 pom.xml.versionsBackup
@@ -139,4 +140,3 @@ $RECYCLE.BIN/
 *.lnk
 
 # End of https://www.toptal.com/developers/gitignore/api/eclipse,maven,windows,java
-/HIG_Project/
