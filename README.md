@@ -18,7 +18,7 @@ HIG_Project
        │       └─ **file**                   # 공통파일 관리 Back‑End
        │           ├─ controller             # FileController.java
        │           ├─ service                # FileService / Impl
-       │           └─ vo                     # FileVO, FileInfoVO …
+       │           └─ vo                     # FileVO, UploadResultVO …
        │
        ├─ resources
        │   └─ mybatis
@@ -34,10 +34,12 @@ HIG_Project
            ├─ WEB-INF
            │   └─ views
            │       ├─ **approval**           # JSP (작성·결재·상세조회 등)
-           │    
+           │       └─ **file**               # 첨부/다운로드 뷰
            └─ resources
                └─ js
                    ├─ approval               # 결재 상태 Flow JS
+                   └─ file                   # Drag‑Drop Upload JS
+
 
 
 
